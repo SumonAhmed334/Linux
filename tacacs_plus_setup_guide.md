@@ -22,24 +22,63 @@ This guide uses **tac_plus** (the classic Shrubbery/`tacacs+` daemon, package na
 
 ## 2. Server-Side Setup (Ubuntu 22.04)
 
-### 2.1 Update system & install package
+### 2.1 Build from source — Shrubbery tac_plus F4.0.4.28
+
+This is the version/method you've already used (confirmed from your shell history), and it's the recommended path since the Ubuntu apt package (`tacacs+`) is an older repackaged build with less predictable behavior. Building from source gives you the canonical Shrubbery daemon.
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install tacacs+ -y
+
+# Build dependencies
+sudo apt install -y build-essential libwrap0-dev libpam0g-dev wget
+
+# Download source
+cd /home/tacacs   # or your preferred build directory
+wget https://www.shrubbery.net/pub/tac_plus/tacacs+-F4.0.4.28.tar.gz
+
+# Extract and build
+tar -xvzf tacacs+-F4.0.4.28.tar.gz
+cd tacacs+-F4.0.4.28
+./configure
+make
+sudo make install
 ```
 
-This installs:
-- Binary: `/usr/sbin/tac_plus`
-- Config: `/etc/tacacs+/tac_plus.conf`
-- Systemd service: `tacacs_plus.service` (or `tac_plus` depending on version — check with `systemctl list-unit-files | grep tac`)
+This installs the binary (typically to `/usr/local/sbin/tac_plus` — confirm with `which tac_plus` or `find / -name tac_plus -type f 2>/dev/null`).
 
-> If the apt package is outdated or missing, you can build from source (tac_plus-ng is the modern actively maintained fork):
-> ```bash
-> sudo apt install build-essential libssl-dev libwrap0-dev cmake libtalloc-dev -y
-> git clone https://github.com/MarcJ/tacacs_plus.git   # or tac_plus-ng repo
-> cd tac_plus-ng && cmake . && make && sudo make install
-> ```
+> **Note on the .deb alternative:** Your history also shows attempts to grab the prebuilt `tacacs+_4.0.4.28-3_amd64.deb` from Ubuntu/kernel.org mirrors. That package is the same version repackaged for apt (installs to `/etc/tacacs+/` and registers a systemd unit automatically), but paths below assume the **source build**, since that's what your `/home/tacacs` history confirms you completed. If you actually ended up using the `.deb` instead, config/binary paths will follow the apt layout (`/etc/tacacs+/tac_plus.conf`, `systemctl` unit `tacacs_plus`) — let me know which one is actually live on the box (`dpkg -l | grep tacacs` will tell you) and I'll adjust the rest of this guide accordingly.
+
+### 2.1.1 Create config directory and systemd service (source build only)
+
+The source build does **not** create `/etc/tacacs+/` or a systemd service automatically — you need to set these up manually:
+
+```bash
+sudo mkdir -p /etc/tacacs+
+sudo mkdir -p /var/log/tac_plus
+```
+
+Create `/etc/systemd/system/tac_plus.service`:
+
+```ini
+[Unit]
+Description=TACACS+ Authentication Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/tac_plus -C /etc/tacacs+/tac_plus.conf -d 16
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> Adjust `ExecStart` path if `which tac_plus` shows a different location. `-d 16` enables verbose packet-level debug logging to syslog/console — drop it once things are stable, or lower to `-d 0`.
+
+```bash
+sudo systemctl daemon-reload
+```
 
 ### 2.2 Check for port 49 conflicts (common issue)
 
@@ -146,16 +185,16 @@ sudo tac_plus -C /etc/tacacs+/tac_plus.conf -P
 ### 2.6 Enable & start the service
 
 ```bash
-sudo systemctl enable tacacs_plus
-sudo systemctl restart tacacs_plus
-sudo systemctl status tacacs_plus
+sudo systemctl enable tac_plus
+sudo systemctl restart tac_plus
+sudo systemctl status tac_plus
 ```
 
 Watch logs live while testing:
 
 ```bash
 sudo tail -f /var/log/tac_plus/access.log
-journalctl -u tacacs_plus -f
+journalctl -u tac_plus -f
 ```
 
 ### 2.7 Firewall (UFW / iptables)
@@ -326,7 +365,7 @@ display current-configuration | include hwtacacs
 | Install | `sudo apt install tacacs+ -y` |
 | Edit config | `sudo nano /etc/tacacs+/tac_plus.conf` |
 | Validate config | `sudo tac_plus -C /etc/tacacs+/tac_plus.conf -P` |
-| Restart service | `sudo systemctl restart tacacs_plus` |
-| Check status | `sudo systemctl status tacacs_plus` |
+| Restart service | `sudo systemctl restart tac_plus` |
+| Check status | `sudo systemctl status tac_plus` |
 | Live logs | `sudo tail -f /var/log/tac_plus/access.log` |
 | Check port | `sudo ss -tulnp \| grep 49` |
