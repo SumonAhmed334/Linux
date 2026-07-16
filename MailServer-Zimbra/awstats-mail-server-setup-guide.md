@@ -1,9 +1,6 @@
 # AWStats Mail Log Analysis — Setup Guide
 
 **Server:** mail.sumonahmed.xyz (Ubuntu, Postfix + Zimbra)
-**Goal:** Analyze Postfix mail logs with AWStats and view reports as static HTML pages.
-
----
 
 ## 1. Install AWStats
 
@@ -11,17 +8,11 @@
 apt update
 apt install -y awstats
 ```
-
-This installs the core AWStats package. Some helper scripts (like `maillogconvert.pl` and `awstats_buildstaticpages.pl`) are included but not placed on `$PATH` by default — this is addressed in Step 3 and Step 7.
-
 ---
-
 ## 2. Identify the Mail Log
 
-Postfix logs on Debian/Ubuntu are usually at:
-
 ```bash
-ls -la /var/log/mail.log
+ls -la /var/log/zimbra.log
 ```
 
 ---
@@ -48,7 +39,7 @@ perl /usr/share/doc/awstats/examples/maillogconvert.pl standard < /var/log/mail.
 Verify the output looks like clean, single-line records:
 
 ```bash
-tail -20 /var/log/mail.log.awstats
+tail -20 /var/log/zimbra.log.awstats
 ```
 
 Example line:
@@ -81,6 +72,7 @@ LogFormat="%time2 %email %email_r %host %host_r %method %url %code %bytesd"
 DNSLookup=0
 SiteDomain="mail.sumonahmed.xyz"
 HostAliases="localhost 127.0.0.1 mail.sumonahmed.xyz"
+
 ```
 
 ### Why this LogFormat string
@@ -251,15 +243,6 @@ If rotation happens more frequently than your cron interval, either:
 ---
 
 ## Summary of Final Working Config
-
-```ini
-LogFile="/var/log/mail.log.awstats"
-LogType=M
-LogFormat="%time2 %email %email_r %host %host_r %method %url %code %bytesd"
-DNSLookup=0
-SiteDomain="mail.sumonahmed.xyz"
-HostAliases="localhost 127.0.0.1 mail.sumonahmed.xyz"
-```
 
 **Report URL:** `http://mail.sumonahmed.xyz/awstats-mail/awstats.mail.html`
 **Update automation:** `/usr/local/bin/awstats-mail-update.sh` via cron every 30 minutes
