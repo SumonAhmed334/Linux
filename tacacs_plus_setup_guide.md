@@ -29,20 +29,23 @@ This is the version/method you've already used (confirmed from your shell histor
 ```bash
 sudo apt update && sudo apt upgrade -y
 
-# Build dependencies
-sudo apt install -y build-essential libwrap0-dev libpam0g-dev wget
+# Build dependencies (flex + bison are required — configure fails without them)
+sudo apt install -y build-essential libwrap0-dev libpam0g-dev flex bison wget
 
 # Download source
 cd /home/tacacs   # or your preferred build directory
 wget https://www.shrubbery.net/pub/tac_plus/tacacs+-F4.0.4.28.tar.gz
 
 # Extract and build
+# Note: the tarball extracts to "tacacs-F4.0.4.28" (no "+" in the folder name)
 tar -xvzf tacacs+-F4.0.4.28.tar.gz
-cd tacacs+-F4.0.4.28
+cd tacacs-F4.0.4.28
 ./configure
 make
 sudo make install
 ```
+
+> **If `./configure` still fails after installing flex/bison**, check the exact error line — common next blockers on Ubuntu 22.04 are missing `libpam0g-dev` (already included above) or a missing `pkg-config`. Run `sudo apt install -y pkg-config` if configure complains about it.
 
 This installs the binary (typically to `/usr/local/sbin/tac_plus` — confirm with `which tac_plus` or `find / -name tac_plus -type f 2>/dev/null`).
 
