@@ -139,6 +139,192 @@ Clean up the test container when done:
 ```bash
 incus delete test-container --force
 ```
+# Incus Macvlan & GUI Troubleshooting Guide
+
+## Goal
+
+-   Ubuntu Incus host: `192.168.77.111`
+-   Container: obtain IP from `192.168.77.0/24`
+-   Enable Incus HTTPS API/UI.
+
+## 1. Verify host networking
+
+``` bash
+ip -br a
+ip route
+ping -c 4 192.168.77.1
+```
+
+Expected host IP:
+
+``` text
+192.168.77.111/24
+```
+
+------------------------------------------------------------------------
+
+## 2. Create a macvlan network
+
+``` bash
+incus network create lan --type=macvlan parent=ens33
+```
+
+Verify:
+
+``` bash
+incus network list
+incus network show lan
+```
+
+------------------------------------------------------------------------
+
+## 3. Attach the network to the container
+
+If `eth0` already exists:
+
+``` bash
+incus config device set vm-001 eth0 network=lan
+```
+
+If not:
+
+``` bash
+incus config device add vm-001 eth0 nic network=lan
+```
+
+Restart the container:
+
+``` bash
+incus restart vm-001
+```
+
+------------------------------------------------------------------------
+
+## 4. Inside the container
+
+``` bash
+incus exec vm-001 -- bash
+
+ip link set eth0 up
+dhclient eth0
+
+ip -br a
+ip route
+```
+
+Expected:
+
+``` text
+192.168.77.128/24
+```
+
+------------------------------------------------------------------------
+
+## 5. Verify from the host
+
+``` bash
+incus info vm-001
+```
+
+Look for:
+
+``` text
+inet: 192.168.77.128/24
+```
+
+------------------------------------------------------------------------
+
+## 6. Important macvlan limitation
+
+The Incus host **cannot communicate** directly with its macvlan
+containers.
+
+Works: - Windows PC -\> Container - Router -\> Container - Internet -\>
+Container
+
+Does not work: - Ubuntu Host -\> Container
+
+This is expected Linux macvlan behavior.
+
+------------------------------------------------------------------------
+
+# Incus HTTPS API / GUI
+
+## Check configuration
+
+``` bash
+incus info
+incus config show
+```
+
+If:
+
+``` text
+addresses: []
+```
+
+then configure:
+
+``` bash
+incus config set core.https_address 192.168.77.111:8443
+systemctl restart incus
+```
+
+Verify:
+
+``` bash
+incus config get core.https_address
+ss -tlnp | grep 8443
+```
+
+Expected:
+
+``` text
+LISTEN 192.168.77.111:8443
+```
+
+Test:
+
+``` bash
+curl -k https://192.168.77.111:8443
+```
+
+If port 8443 is still not listening:
+
+``` bash
+journalctl -u incus -n 100 --no-pager
+```
+
+------------------------------------------------------------------------
+
+# VMware Requirements
+
+VMware Workstation VM network adapter should be:
+
+-   Bridged
+
+Not:
+
+-   NAT
+-   Host-only
+
+------------------------------------------------------------------------
+
+# Connectivity Tests
+
+From Windows:
+
+``` cmd
+ping 192.168.77.218
+ssh root@192.168.77.218
+```
+
+From host:
+
+``` bash
+incus list
+incus info vm-001
+```
 
 ---
 
