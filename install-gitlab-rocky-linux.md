@@ -71,19 +71,8 @@ This can take several minutes on first run — it sets up PostgreSQL, Redis, Pum
 
 ### 7. Configure the Firewall
 
-Check which firewall tool is actually managing the box first:
-
 ```bash
-sudo systemctl status firewalld    # Rocky/RHEL default
-sudo ufw status                    # Ubuntu default
-```
-
-**If `firewalld` is active:**
-
-```bash
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
-sudo firewall-cmd --reload
+sudo apt install -y iptables-persistent
 ```
 
 **If using raw `iptables` (no firewalld/ufw managing the box):**
@@ -102,21 +91,10 @@ sudo iptables -L INPUT -v -n --line-numbers
 
 Plain `iptables` rules don't survive a reboot unless saved. On Ubuntu/Debian, install `iptables-persistent` (it'll offer to save current rules on install — accept it):
 
-```bash
-sudo apt install -y iptables-persistent
-```
-
 Whenever you add or change rules afterward, save them again:
 
 ```bash
 sudo netfilter-persistent save
-```
-
-**If `ufw` is active**, don't mix it with raw `iptables -A` commands — `ufw` manages its own iptables rules underneath and manual edits can get overwritten or conflict. Use `ufw` directly instead:
-
-```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
 ```
 
 ### 8. Get the Initial Root Password
