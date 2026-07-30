@@ -340,7 +340,7 @@ You'll also receive **email notifications** for these events (sent to the email 
 **"Permission denied (publickey)" when using Git**
 → Your SSH key isn't set up or wasn't added to GitLab correctly. Revisit [Section 7](#7-setting-up-ssh-keys-recommended).
 
-**Can't reach http://192.168.43.172/**
+**Can't reach http://192.168.XXX.XXX/**
 → Confirm you're connected to the internal network/office Wi-Fi. This address is not accessible from outside the LAN.
 
 **"Merge conflict" error when pulling/pushing**
