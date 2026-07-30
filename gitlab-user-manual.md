@@ -1,6 +1,6 @@
 # GitLab User Manual
 
-**Internal GitLab Instance:** http://192.168.43.172/
+**Internal GitLab Instance:** http://192.168.XX.XXX/
 
 A beginner-friendly guide for anyone using our internal GitLab server for the first time.
 
@@ -47,7 +47,7 @@ You don't need to be a developer to use GitLab — it's also useful for document
 Open your web browser and go to:
 
 ```
-http://192.168.43.172/
+http://192.168.XX.XXX/
 ```
 
 > **Note:** This is only reachable from within the office/internal network (LAN). It will not open from outside the network or over mobile data unless connected via VPN.
@@ -56,7 +56,7 @@ http://192.168.43.172/
 
 ## 3. Logging In & Changing Your Password
 
-1. Go to `http://192.168.43.172/`
+1. Go to `http://192.168.XX.XXX/`
 2. Enter the **username** and **password** provided to you by the administrator
 3. Click **Sign in**
 
