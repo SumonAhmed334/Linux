@@ -74,15 +74,42 @@ By default MongoDB binds to `127.0.0.1:27017`, which is exactly what a single-no
 
 ### 4.1 Add the Pritunl repository
 
+`apt-key` is deprecated on Ubuntu 22.04, so use the modern `signed-by` keyring method. Run these **one command at a time** (not pasted as a block) so you can confirm each step succeeds.
+
+**Step 1 — Add the repo entry:**
 ```bash
 sudo tee /etc/apt/sources.list.d/pritunl.list << EOF
 deb [ signed-by=/usr/share/keyrings/pritunl.gpg ] https://repo.pritunl.com/stable/apt jammy main
 EOF
+```
 
-# Correct key URL — note the .asc extension, which was missing before
-sudo apt --assume-yes install gnupg
-curl -fsSL https://raw.githubusercontent.com/pritunl/pgp/master/pritunl_repo_pub.asc | \
-  sudo gpg -o /usr/share/keyrings/pritunl.gpg --dearmor --yes
+**Step 2 — Make sure gnupg is installed:**
+```bash
+sudo apt install -y gnupg
+```
+
+**Step 3 — Download the signing key to a file (more reliable than piping directly into gpg):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/pritunl/pgp/master/pritunl_repo_pub.asc -o /tmp/pritunl.asc
+```
+
+**Step 4 — Confirm it actually downloaded content:**
+```bash
+cat /tmp/pritunl.asc
+```
+This should print a block starting with `-----BEGIN PGP PUBLIC KEY BLOCK-----` and ending with `-----END PGP PUBLIC KEY BLOCK-----`. Don't proceed until you see this — piping `curl | gpg` directly can silently produce a 0-byte keyring file in some shell sessions, so downloading to a file first and verifying it is the reliable method.
+
+**Step 5 — Dearmor the key from the saved file into the keyring:**
+```bash
+sudo rm -f /usr/share/keyrings/pritunl.gpg
+sudo gpg -o /usr/share/keyrings/pritunl.gpg --dearmor /tmp/pritunl.asc
+```
+
+**Step 6 — Confirm the key file was created correctly and is non-empty:**
+```bash
+ls -la /usr/share/keyrings/pritunl.gpg
+gpg --show-keys /usr/share/keyrings/pritunl.gpg
+```
 
 ### 4.2 Install Pritunl
 
@@ -277,8 +304,14 @@ sudo apt update && sudo apt install -y mongodb-org
 sudo systemctl enable --now mongod
 
 # Pritunl
-curl -fsSL https://raw.githubusercontent.com/pritunl/pgp/master/pritunl_repo_pub_key | sudo gpg -o /usr/share/keyrings/pritunl.gpg --dearmor
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/pritunl.gpg] http://repo.pritunl.com/stable/apt jammy main" | sudo tee /etc/apt/sources.list.d/pritunl.list
+sudo tee /etc/apt/sources.list.d/pritunl.list << EOF
+deb [ signed-by=/usr/share/keyrings/pritunl.gpg ] https://repo.pritunl.com/stable/apt jammy main
+EOF
+sudo apt install -y gnupg
+curl -fsSL https://raw.githubusercontent.com/pritunl/pgp/master/pritunl_repo_pub.asc -o /tmp/pritunl.asc
+cat /tmp/pritunl.asc   # confirm it shows a PGP key block before continuing
+sudo gpg -o /usr/share/keyrings/pritunl.gpg --dearmor /tmp/pritunl.asc
+ls -la /usr/share/keyrings/pritunl.gpg   # confirm non-zero size
 sudo apt update && sudo apt install -y pritunl
 sudo systemctl enable --now pritunl
 
