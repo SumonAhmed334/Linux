@@ -181,59 +181,71 @@ You'll hit a self-signed cert warning on first load — that's expected; Pritunl
 4. Set the public IP/domain Pritunl should advertise to clients.
 
 ---
-7. Restoring Pritunl MongoDB from a Previous Server
+### 7. Restoring Pritunl MongoDB from a Previous Server
 
 Step-by-step sequence used to restore a mongodump backup from a previous Pritunl server into a new VM.
 
-7.1 Check current Pritunl service status
+### 7.1 Check current Pritunl service status
 bash
 systemctl status pritunl --no-pager
-7.2 Stop Pritunl before restoring
+
+### 7.2 Stop Pritunl before restoring
 
 So it isn't writing to the database mid-restore:
 
 bash
 systemctl stop pritunl
-7.3 Confirm it has stopped
+
+### 7.3 Confirm it has stopped
 bash
 systemctl status pritunl
-7.4 Confirm mongorestore is available
+### 7.4 Confirm mongorestore is available
 bash
 which mongorestore
-7.5 Go to the folder containing the dump
+
+### 7.5 Go to the folder containing the dump
 bash
 cd /root/pritunl-20260804-213611
-7.6 Restore the dump into the pritunl database
+
+### 7.6 Restore the dump into the pritunl database
 
 --drop clears the new VM's fresh/auto-created data first, avoiding a mixed state:
 
 bash
 mongorestore --db=pritunl --drop pritunl/
-7.7 Verify the restored collections exist
+
+### 7.7 Verify the restored collections exist
 bash
 mongosh pritunl --eval "db.getCollectionNames()"
-7.8 Verify restored user count
+
+### 7.8 Verify restored user count
 bash
 mongosh pritunl --eval "db.users.countDocuments()"
-7.9 Verify restored server count
+
+### 7.9 Verify restored server count
 bash
 mongosh pritunl --eval "db.servers.countDocuments()"
-7.10 Verify restored organization count
+
+### 7.10 Verify restored organization count
 bash
 mongosh pritunl --eval "db.organizations.countDocuments()"
-7.11 Start Pritunl again
+
+### 7.11 Start Pritunl again
 bash
 sudo systemctl start pritunl
-7.12 Confirm it's running cleanly
+
+### 7.12 Confirm it's running cleanly
 bash
 sudo systemctl status pritunl --no-pager
-7.13 Try the default password command
+
+### 7.13 Try the default password command
 
 Expected to fail on a restored/non-fresh database:
 
 bash
 sudo pritunl default-password
-7.14 Reset the admin password
+
+### 7.14 Reset the admin password
 
 Since the restored database already has an admin account and default-password only works on fresh installs:
 
@@ -246,8 +258,10 @@ Stopping Pritunl before restoring prevents it from writing to the database mid-r
 --drop wipes the new VM's fresh/auto-created pritunl database before loading the old data, avoiding a mixed state.
 After restoring, the imported hosts collection still references the old server's host identity — go to Administration → Hosts in the web console and remove the stale host, then re-attach the new VM as the host for each server before VPN servers will start correctly.
 sudo pritunl default-password only generates a password for a fresh install with no admin yet — on a restored database it returns No default password available, use reset-password, exactly as expected. sudo pritunl reset-password is the correct command to reset the restored admin account and print new login credentials.
-8. Production Hardening (Recommended)
-8.1 Enable MongoDB authentication
+
+
+### 8. Production Hardening (Recommended)
+### 8.1 Enable MongoDB authentication
 bash
 mongosh
 javascript
@@ -272,17 +286,20 @@ Update Pritunl's Mongo URI accordingly (via pritunl set-mongodb or the web conso
 bash
 sudo pritunl set-mongodb mongodb://pritunl_admin:USE_A_STRONG_PASSWORD_HERE@localhost:27017/pritunl?authSource=admin
 sudo systemctl restart pritunl
-8.2 Replace the self-signed certificate
+
+### 8.2 Replace the self-signed certificate
 
 Use Let's Encrypt (via a reverse proxy is not typical here since Pritunl serves HTTPS directly on 443). You can either:
 
 Upload a cert/key pair under Administrators → Settings → SSL Certificate in the web console, or
 Use certbot in standalone mode (stop Pritunl briefly to free port 443, issue the cert, then point Pritunl at the resulting files).
-8.3 Enable two-factor authentication
+
+### 8.3 Enable two-factor authentication
 
 Settings → Administrators → enable Google Authenticator / Duo for all admin accounts.
 
-8.4 Regular MongoDB backups
+
+### 8.4 Regular MongoDB backups
 bash
 sudo mkdir -p /backup/mongodb
 mongodump --uri="mongodb://pritunl_admin:PASSWORD@localhost:27017/pritunl?authSource=admin" \
@@ -290,7 +307,7 @@ mongodump --uri="mongodb://pritunl_admin:PASSWORD@localhost:27017/pritunl?authSo
 
 Automate with a cron job and rotate old backups.
 
-9. Useful Pritunl CLI Commands
+### 9. Useful Pritunl CLI Commands
 Command	Purpose
 sudo pritunl version	Show installed version
 sudo pritunl default-password	Show/reset default admin password
@@ -300,7 +317,8 @@ sudo pritunl reset-mongodb	Reset Mongo URI to default
 sudo systemctl restart pritunl	Restart the service
 sudo journalctl -u pritunl -f	Live-tail Pritunl logs
 sudo journalctl -u mongod -f	Live-tail MongoDB logs
-10. Troubleshooting
+
+### 10. Troubleshooting
 
 Pritunl web UI unreachable on 443
 
@@ -314,6 +332,7 @@ Pritunl can't connect to MongoDB
 bash
 sudo systemctl status mongod
 mongosh --eval "db.runCommand({ ping: 1 })"
+
 # Check auth if enabled:
 sudo tail -f /var/log/mongodb/mongod.log
 
@@ -333,7 +352,8 @@ bash
 sudo apt update
 sudo apt install --only-upgrade pritunl mongodb-org
 sudo systemctl restart mongod pritunl
-11. Quick Reference — Full Install (Copy/Paste)
+
+### 11. Quick Reference — Full Install (Copy/Paste)
 bash
 # System prep
 sudo apt update && sudo apt upgrade -y
