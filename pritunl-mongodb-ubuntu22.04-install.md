@@ -66,7 +66,7 @@ sudo systemctl status mongod --no-pager
 mongosh --eval "db.runCommand({ ping: 1 })"
 ```
 
-By default MongoDB binds to `127.0.0.1:27017`, which is exactly what a single-node Pritunl setup needs. Do **not** expose 27017 publicly unless you're building a multi-node Pritunl cluster with a remote Mongo — if you do, secure it with authentication and TLS (see §7).
+By default MongoDB binds to `127.0.0.1:27017`, which is exactly what a single-node Pritunl setup needs. Do **not** expose 27017 publicly unless you're building a multi-node Pritunl cluster with a remote Mongo — if you do, secure it with authentication and TLS (see §8.1).
 
 ---
 
@@ -168,7 +168,7 @@ Open a browser to:
 https://<your-server-ip>
 ```
 
-You'll hit a self-signed cert warning on first load — that's expected; Pritunl generates its own cert initially (replace with a real one in §7.2).
+You'll hit a self-signed cert warning on first load — that's expected; Pritunl generates its own cert initially (replace with a real one in §8.2).
 
 ### 6.3 Complete the setup wizard
 
@@ -181,90 +181,101 @@ You'll hit a self-signed cert warning on first load — that's expected; Pritunl
 4. Set the public IP/domain Pritunl should advertise to clients.
 
 ---
-### 7. Restoring Pritunl MongoDB from a Previous Server
 
-Step-by-step sequence used to restore a mongodump backup from a previous Pritunl server into a new VM.
+## 7. Restoring Pritunl MongoDB from a Previous Server
+
+Step-by-step sequence used to restore a `mongodump` backup from a previous Pritunl server into a new VM.
 
 ### 7.1 Check current Pritunl service status
 ```bash
 systemctl status pritunl --no-pager
+```
 
 ### 7.2 Stop Pritunl before restoring
-
 So it isn't writing to the database mid-restore:
-
 ```bash
 systemctl stop pritunl
+```
 
 ### 7.3 Confirm it has stopped
 ```bash
 systemctl status pritunl
-### 7.4 Confirm mongorestore is available
+```
+
+### 7.4 Confirm `mongorestore` is available
 ```bash
 which mongorestore
+```
 
 ### 7.5 Go to the folder containing the dump
 ```bash
 cd /root/pritunl-20260804-213611
+```
 
-### 7.6 Restore the dump into the pritunl database
-
---drop clears the new VM's fresh/auto-created data first, avoiding a mixed state:
-
+### 7.6 Restore the dump into the `pritunl` database
+`--drop` clears the new VM's fresh/auto-created data first, avoiding a mixed state:
 ```bash
 mongorestore --db=pritunl --drop pritunl/
+```
 
 ### 7.7 Verify the restored collections exist
 ```bash
 mongosh pritunl --eval "db.getCollectionNames()"
+```
 
 ### 7.8 Verify restored user count
 ```bash
 mongosh pritunl --eval "db.users.countDocuments()"
+```
 
 ### 7.9 Verify restored server count
 ```bash
 mongosh pritunl --eval "db.servers.countDocuments()"
+```
 
 ### 7.10 Verify restored organization count
 ```bash
 mongosh pritunl --eval "db.organizations.countDocuments()"
+```
 
 ### 7.11 Start Pritunl again
 ```bash
 sudo systemctl start pritunl
+```
 
 ### 7.12 Confirm it's running cleanly
 ```bash
 sudo systemctl status pritunl --no-pager
+```
 
 ### 7.13 Try the default password command
-
 Expected to fail on a restored/non-fresh database:
-
 ```bash
 sudo pritunl default-password
+```
 
 ### 7.14 Reset the admin password
-
-Since the restored database already has an admin account and default-password only works on fresh installs:
-
+Since the restored database already has an admin account and `default-password` only works on fresh installs:
 ```bash
 pritunl reset-password
+```
 
-Notes:
+**Notes:**
+- Stopping Pritunl before restoring prevents it from writing to the database mid-restore.
+- `--drop` wipes the new VM's fresh/auto-created `pritunl` database before loading the old data, avoiding a mixed state.
+- After restoring, the imported `hosts` collection still references the **old** server's host identity — go to **Administration → Hosts** in the web console and remove the stale host, then re-attach the new VM as the host for each server before VPN servers will start correctly.
+- `sudo pritunl default-password` only generates a password for a fresh install with no admin yet — on a restored database it returns `No default password available, use reset-password`, exactly as expected. `sudo pritunl reset-password` is the correct command to reset the restored admin account and print new login credentials.
 
-Stopping Pritunl before restoring prevents it from writing to the database mid-restore.
---drop wipes the new VM's fresh/auto-created pritunl database before loading the old data, avoiding a mixed state.
-After restoring, the imported hosts collection still references the old server's host identity — go to Administration → Hosts in the web console and remove the stale host, then re-attach the new VM as the host for each server before VPN servers will start correctly.
-sudo pritunl default-password only generates a password for a fresh install with no admin yet — on a restored database it returns No default password available, use reset-password, exactly as expected. sudo pritunl reset-password is the correct command to reset the restored admin account and print new login credentials.
+---
 
+## 8. Production Hardening (Recommended)
 
-### 8. Production Hardening (Recommended)
 ### 8.1 Enable MongoDB authentication
+
 ```bash
 mongosh
-javascript
+```
+```javascript
 use admin
 db.createUser({
   user: "pritunl_admin",
@@ -272,88 +283,101 @@ db.createUser({
   roles: [ { role: "root", db: "admin" } ]
 })
 exit
+```
 
-Enable auth in /etc/mongod.conf:
+Enable auth in `/etc/mongod.conf`:
 
-yaml
+```yaml
 security:
   authorization: enabled
+```
+
 ```bash
 sudo systemctl restart mongod
+```
 
-Update Pritunl's Mongo URI accordingly (via pritunl set-mongodb or the web console → Settings):
+Update Pritunl's Mongo URI accordingly (via `pritunl set-mongodb` or the web console → Settings):
 
 ```bash
 sudo pritunl set-mongodb mongodb://pritunl_admin:USE_A_STRONG_PASSWORD_HERE@localhost:27017/pritunl?authSource=admin
 sudo systemctl restart pritunl
+```
 
 ### 8.2 Replace the self-signed certificate
 
-Use Let's Encrypt (via a reverse proxy is not typical here since Pritunl serves HTTPS directly on 443). You can either:
-
-Upload a cert/key pair under Administrators → Settings → SSL Certificate in the web console, or
-Use certbot in standalone mode (stop Pritunl briefly to free port 443, issue the cert, then point Pritunl at the resulting files).
+Use Let's Encrypt (via a reverse proxy is **not** typical here since Pritunl serves HTTPS directly on 443). You can either:
+- Upload a cert/key pair under **Administrators → Settings → SSL Certificate** in the web console, or
+- Use `certbot` in standalone mode (stop Pritunl briefly to free port 443, issue the cert, then point Pritunl at the resulting files).
 
 ### 8.3 Enable two-factor authentication
 
 Settings → Administrators → enable Google Authenticator / Duo for all admin accounts.
 
-
 ### 8.4 Regular MongoDB backups
+
 ```bash
 sudo mkdir -p /backup/mongodb
 mongodump --uri="mongodb://pritunl_admin:PASSWORD@localhost:27017/pritunl?authSource=admin" \
   --out=/backup/mongodb/$(date +%F)
+```
 
 Automate with a cron job and rotate old backups.
 
-### 9. Useful Pritunl CLI Commands
-Command	Purpose
-sudo pritunl version	Show installed version
-sudo pritunl default-password	Show/reset default admin password
-sudo pritunl reset-password	Force-reset admin password
-sudo pritunl set-mongodb <uri>	Change MongoDB connection string
-sudo pritunl reset-mongodb	Reset Mongo URI to default
-sudo systemctl restart pritunl	Restart the service
-sudo journalctl -u pritunl -f	Live-tail Pritunl logs
-sudo journalctl -u mongod -f	Live-tail MongoDB logs
+---
 
-### 10. Troubleshooting
+## 9. Useful Pritunl CLI Commands
 
-Pritunl web UI unreachable on 443
+| Command | Purpose |
+|---|---|
+| `sudo pritunl version` | Show installed version |
+| `sudo pritunl default-password` | Show/reset default admin password |
+| `sudo pritunl reset-password` | Force-reset admin password |
+| `sudo pritunl set-mongodb <uri>` | Change MongoDB connection string |
+| `sudo pritunl reset-mongodb` | Reset Mongo URI to default |
+| `sudo systemctl restart pritunl` | Restart the service |
+| `sudo journalctl -u pritunl -f` | Live-tail Pritunl logs |
+| `sudo journalctl -u mongod -f` | Live-tail MongoDB logs |
 
+---
+
+## 10. Troubleshooting
+
+**Pritunl web UI unreachable on 443**
 ```bash
 sudo systemctl status pritunl
 sudo ss -tulpn | grep 443
 sudo ufw status
+```
 
-Pritunl can't connect to MongoDB
-
+**Pritunl can't connect to MongoDB**
 ```bash
 sudo systemctl status mongod
 mongosh --eval "db.runCommand({ ping: 1 })"
-
 # Check auth if enabled:
 sudo tail -f /var/log/mongodb/mongod.log
+```
 
-VPN clients connect but no internet (no NAT)
-
-Confirm IP forwarding is enabled:
+**VPN clients connect but no internet (no NAT)**
+- Confirm IP forwarding is enabled:
 ```bash
 sysctl net.ipv4.ip_forward
 # Should return 1; if not:
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
-Confirm the Pritunl server's routed/NAT network settings match your intended client subnet.
+```
+- Confirm the Pritunl server's routed/NAT network settings match your intended client subnet.
 
-Version mismatch / upgrade issues
-
+**Version mismatch / upgrade issues**
 ```bash
 sudo apt update
 sudo apt install --only-upgrade pritunl mongodb-org
 sudo systemctl restart mongod pritunl
+```
 
-### 11. Quick Reference — Full Install (Copy/Paste)
+---
+
+## 11. Quick Reference — Full Install (Copy/Paste)
+
 ```bash
 # System prep
 sudo apt update && sudo apt upgrade -y
@@ -385,5 +409,16 @@ sudo ufw enable
 
 # Get credentials
 sudo pritunl default-password
+```
 
-Then open https://<server-ip> and complete the setup wizard.
+Then open `https://<server-ip>` and complete the setup wizard.
+
+---
+
+## 12. Version Compatibility Note
+
+Always check the [official Pritunl documentation](https://docs.pritunl.com) before deploying, since supported MongoDB versions can change between Pritunl releases. If you're running this alongside your other infrastructure (Zimbra, GitLab CE, TACACS+), keep Pritunl on its own VM or LXC container to isolate the MongoDB instance and avoid port/resource conflicts with any other Mongo-backed services.
+
+---
+
+
