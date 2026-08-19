@@ -1,4 +1,4 @@
-# Ubuntu 24.04 Server — Install & Prepare Guide
+# Ubuntu 22.04 Server — Install & Prepare Guide
 
 > Install Ubuntu Server **Minimized/Minimal**, without LVM, with SSH server only.
 > Version: v1.02 — Jul 2025
