@@ -407,6 +407,10 @@ services:
     environment:
       JWT_ENABLED: "true"
       JWT_SECRET: ${JWT_SECRET}
+      # Required in this topology: Euro-Office fetches documents from Nextcloud
+      # over the internal Docker network (a private 172.x address), and the
+      # image blocks requests to private IPs unless this is set.
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
     volumes:
       - eurooffice_data:/var/lib/euro-office/documentserver
       - eurooffice_logs:/var/log/euro-office/documentserver
@@ -428,6 +432,8 @@ networks:
   nextcloud-net:
     external: true
 ```
+
+> **Correction:** `ALLOW_PRIVATE_IP_ADDRESS: "true"` was added to the `euro-office` service above. Euro-Office is built on the OnlyOffice codebase, and that codebase's document fetcher refuses to reach private/RFC1918 IP addresses by default (an anti-SSRF guard). In this single-VM design, Euro-Office must reach Nextcloud at its internal Docker address on `nextcloud-net` (something like `172.18.0.x`), so without this variable, document open/save will fail even though the health check and the editor UI both look fine. If you later split Euro-Office onto a host that only ever reaches Nextcloud via its public HTTPS domain, you can remove this variable again.
 
 ---
 
@@ -807,7 +813,9 @@ If the NPM container IP can change after recreation, use the Docker network's co
 
 # Part 17 — Configure Nextcloud Office / Euro-Office
 
-## 25. Install the Nextcloud Office connector
+## 25. Install the Euro-Office integration app
+
+> **Correction:** the app you need is called **Euro-Office integration**, not "Nextcloud Office." ("Nextcloud Office" is the umbrella feature area under *Office & text* — Collabora and Euro-Office are two separate connector apps that live under it.)
 
 Open Nextcloud:
 
@@ -824,13 +832,21 @@ Apps
 → Office & text
 ```
 
-Install:
+Find and install:
 
 ```text
-Nextcloud Office
+Euro-Office integration
 ```
 
-The Euro-Office connector is available with Nextcloud 34 and newer.
+Click **Download and enable**.
+
+Alternatively, from the command line:
+
+```bash
+docker exec -u www-data nextcloud php occ app:install eurooffice
+```
+
+This app is available starting with Nextcloud 34, so this stack meets the requirement.
 
 You can also check the installed apps:
 
@@ -842,11 +858,13 @@ docker exec -u www-data nextcloud php occ app:list
 
 ## 26. Configure the Office server
 
+> **Correction:** the settings page is named **Euro-Office**, not "Office" — it's a dedicated admin section created by the app you just installed (`~/settings/admin/eurooffice`).
+
 Go to:
 
 ```text
 Administration settings
-→ Office
+→ Euro-Office
 ```
 
 Set the document server URL:
@@ -868,6 +886,14 @@ from:
 ```
 
 Save.
+
+Then verify the connection from the command line:
+
+```bash
+docker exec -u www-data nextcloud php occ eurooffice:documentserver --check
+```
+
+This confirms Nextcloud can reach the Document Server URL and that the JWT secret matches on both sides, and reports the specific cause if it can't.
 
 ---
 
@@ -1221,6 +1247,8 @@ Do not blindly jump across unsupported Nextcloud major versions. Upgrade one maj
 - [ ] Monitor Nextcloud logs
 - [ ] Test restore procedures
 - [ ] Do not expose MariaDB/Redis directly to the Internet
+- [ ] Pin `euro-office/documentserver` to a specific version tag (e.g. `9.3.1`) instead of `latest` before going into real use — Euro-Office's own docs recommend this for production and it avoids an unplanned change on your next `docker compose pull`
+- [ ] Leave `EXAMPLE_ENABLED` unset on the `euro-office` service — it enables an unauthenticated browser test page and must never be turned on outside a throwaway test
 
 ---
 
