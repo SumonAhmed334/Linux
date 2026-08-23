@@ -249,14 +249,14 @@ tail -100 /var/log/pritunl-backup.log
 
 ## 11. Important behavior
 
-- Backup runs only on the Pritunl server.
-- No SSH or rsync is used.
-- No remote server is involved.
-- The main backup directory is `/var/backups/pritunl/`.
-- The script automatically creates the date directory.
-- Local backups are retained; the script does not delete them.
-- Cron runs the backup every day at 8:00 PM.
-- The backup time follows the Pritunl server's configured timezone.
+* Backup runs only on the Pritunl server.
+* No SSH or rsync is used.
+* No remote server is involved.
+* The main backup directory is `/var/backups/pritunl/`.
+* The script automatically creates the date directory.
+* Local backups are retained; the script does not delete them.
+* Cron runs the backup every day at 8:00 PM.
+* The backup time follows the Pritunl server's configured timezone.
 
 ## 12. Send the local backup to the remote server at 8:30 PM
 
@@ -265,7 +265,7 @@ The local backup will remain on the Pritunl server, and a second copy will be sy
 Remote server:
 
 ```text
-192.168.111.20
+192.168.102.37
 ```
 
 Remote backup directory:
@@ -296,13 +296,13 @@ ssh-keygen -t ed25519
 Copy the key to the remote server:
 
 ```bash
-ssh-copy-id root@192.168.111.20
+ssh-copy-id root@192.168.102.37
 ```
 
 Test passwordless SSH:
 
 ```bash
-ssh root@192.168.111.20
+ssh root@192.168.102.37
 ```
 
 It should connect without asking for the root password.
@@ -330,7 +330,7 @@ set -e
 LOCAL_BACKUP="/var/backups/pritunl/"
 
 REMOTE_USER="root"
-REMOTE_HOST="192.168.111.20"
+REMOTE_HOST="192.168.102.37"
 REMOTE_BACKUP="/root/pritunl-248.2/"
 
 LOG_FILE="/var/log/pritunl-rsync.log"
@@ -379,7 +379,7 @@ Run:
 Then check the remote server:
 
 ```bash
-ssh root@192.168.111.20
+ssh root@192.168.102.37
 ```
 
 Check:
@@ -478,7 +478,7 @@ Pritunl MongoDB
    │
    │ rsync - incremental
    ▼
-192.168.111.20:/root/pritunl-248.2/2026-08-24/pritunl/
+192.168.102.37:/root/pritunl-248.2/2026-08-24/pritunl/
 ```
 
 The local backup is never deleted by the rsync script, and unchanged files are not unnecessarily transferred again.
