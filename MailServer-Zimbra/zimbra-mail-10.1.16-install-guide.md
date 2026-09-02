@@ -1,6 +1,6 @@
 # Zimbra OSE 10.1.16 Installation Guide (Annotated)
 **Date:** 07-APRIL-2026
-**Target host:** `103.118.87.130` → `mail2.sumonahmed.xyz`
+**Target host:** `103.XXX.XX.XXX` → `mail.sumonahmed.xyz`
 
 > This is your original command list with explanations added under each block, so you (or anyone else) can understand *why* each step exists, not just *what* it does.
 
@@ -9,7 +9,7 @@
 ## 1. SSH Access
 
 ```bash
-ssh mailserver@103.118.87.130 ssh-port: 22
+ssh mailserver@103.XXX.XX.XXX ssh-port: 22
 mailserver | 12345@Fhl
 ```
 
@@ -66,11 +66,11 @@ network:
       dhcp6: false
       link-local: []
       addresses:
-      - 103.118.87.130/26
+      - 103.XXX.XX.XXX/26
       optional: true
       routes:
         - to: default
-          via: 103.118.87.129
+          via: 103.XXX.XX.XXX
       nameservers:
         addresses:
         - 8.8.8.8
@@ -79,8 +79,8 @@ network:
 
 **Explanation:** This is a Netplan YAML config (normally placed in `/etc/netplan/*.yaml`) that assigns a **static IP** to interface `ens18`:
 - Disables DHCP for IPv4/IPv6.
-- Assigns `103.118.87.130` with a `/26` subnet mask (64 addresses).
-- Sets the default gateway to `103.118.87.129`.
+- Assigns `103.XXX.XX.XXX` with a `/26` subnet mask (64 addresses).
+- Sets the default gateway to `103.XXX.XX.XXX`.
 - Sets DNS resolvers directly at the network layer (belt-and-suspenders with the `resolv.conf` edits above).
 
 A mail server needs a static IP because its IP is tied to reverse DNS (PTR) records and sender reputation — a changing IP would break mail deliverability.
@@ -108,7 +108,7 @@ sudo ufw disable
 ## 6. Hostname and Timezone
 
 ```bash
-hostnamectl set-hostname mail2.sumonahmed.xyz
+hostnamectl set-hostname mail.sumonahmed.xyz
 timedatectl set-timezone Asia/Dhaka
 ```
 
@@ -131,10 +131,10 @@ systemctl disable postfix
 
 ```bash
 vim /etc/hosts
-103.118.87.131 mail2.sumonahmed.xyz mail
+103.XXX.XX.XXX mail.sumonahmed.xyz mail
 ```
 
-**Explanation:** Adds a local hosts-file mapping so the hostname resolves locally even before/independent of DNS propagation. ⚠️ Note the IP here is `103.118.87.131`, which differs from the `103.118.87.130` used everywhere else in the guide — double-check this isn't a typo, since a mismatched IP here can cause Zimbra's install-time hostname resolution check to behave unexpectedly.
+**Explanation:** Adds a local hosts-file mapping so the hostname resolves locally even before/independent of DNS propagation. ⚠️ Note the IP here is `103.118.87.131`, which differs from the `103.XXX.XX.XXX` used everywhere else in the guide — double-check this isn't a typo, since a mismatched IP here can cause Zimbra's install-time hostname resolution check to behave unexpectedly.
 
 ---
 
@@ -148,14 +148,14 @@ touch /etc/resolv.conf
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 echo "nameserver 1.0.0.3" >> /etc/resolv.conf
 
-nslookup mail2.sumonahmed.xyz
+nslookup mail.sumonahmed.xyz
 ```
 
-**Explanation:** Reasserts the static DNS config (in case anything reset it) and verifies the hostname resolves correctly with `nslookup` before proceeding — Zimbra's installer performs its own resolution check and will fail early if this isn't correct. The sample output confirms `mail2.sumonahmed.xyz` resolves to `103.118.87.130` via the local server.
+**Explanation:** Reasserts the static DNS config (in case anything reset it) and verifies the hostname resolves correctly with `nslookup` before proceeding — Zimbra's installer performs its own resolution check and will fail early if this isn't correct. The sample output confirms `mail.sumonahmed.xyz` resolves to `103.XXX.XX.XXX` via the local server.
 
 ---
 
-## 10. Download and Extract Zimbra OSE
+## 10. Download and Extract Zimbra OSE - 10.1.16
 
 ```bash
 # Source: https://maldua.github.io/zimbra-foss/downloads/
@@ -174,13 +174,13 @@ cd zcs-10.1.16_GA_4200001.UBUNTU22_64.20260310121616/
 **Admin credentials captured during install:**
 ```
 admin-password: wP_H!five@111101
-admin@mail2.sumonahmed.xyz
+admin@mail.sumonahmed.xyz
 ```
 
 **Access points after install:**
 ```
-Zimbra Admin Console: https://103.118.87.130:7071
-Web Client:            https://103.118.87.130
+Zimbra Admin Console: https://103.XXX.XX.XXX:7071
+Web Client:            https://103.XXX.XX.XXX
 ```
 
 🔒 **Security note:** These are live credentials in plaintext. Store them in a password manager and remove/redact them from any shared or archived copy of this document.
@@ -241,24 +241,24 @@ ln -s /opt/certbot/bin/certbot /usr/local/sbin/certbot
 **Explanation:** Installs Certbot inside an isolated Python virtual environment (recommended by the official Certbot docs instead of `apt install certbot`, which can be outdated on some distros), then symlinks the binary into `/usr/local/sbin` so it's available system-wide as `certbot`.
 
 ```bash
-/usr/local/sbin/certbot certonly -d mail2.sumonahmed.xyz --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
+/usr/local/sbin/certbot certonly -d mail.sumonahmed.xyz --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
 ```
 
-**Explanation:** Requests a certificate for `mail2.sumonahmed.xyz` using the standalone HTTP challenge method. `--preferred-chain "ISRG Root X2"` requests the newer ISRG Root X2 (ECDSA) chain instead of the default cross-signed chain. `--register-unsafely-without-email` skips providing a contact email (you won't get expiry/renewal notices from Let's Encrypt this way — worth reconsidering).
+**Explanation:** Requests a certificate for `mail.sumonahmed.xyz` using the standalone HTTP challenge method. `--preferred-chain "ISRG Root X2"` requests the newer ISRG Root X2 (ECDSA) chain instead of the default cross-signed chain. `--register-unsafely-without-email` skips providing a contact email (you won't get expiry/renewal notices from Let's Encrypt this way — worth reconsidering).
 
 ```bash
-cp "/etc/letsencrypt/live/mail2.sumonahmed.xyz/privkey.pem" /opt/zimbra/ssl/zimbra/commercial/commercial.key
+cp "/etc/letsencrypt/live/mail.sumonahmed.xyz/privkey.pem" /opt/zimbra/ssl/zimbra/commercial/commercial.key
 chown zimbra:zimbra /opt/zimbra/ssl/zimbra/commercial/commercial.key
 
 wget -O /tmp/ISRG-X2.pem https://letsencrypt.org/certs/isrg-root-x2.pem
-rm -f "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
-cp "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chain.pem" "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
-cat /tmp/ISRG-X2.pem >> "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
+rm -f "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
+cp "/etc/letsencrypt/live/mail.sumonahmed.xyz/chain.pem" "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
+cat /tmp/ISRG-X2.pem >> "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
 chown zimbra:zimbra /etc/letsencrypt -R
 
 cd /tmp
-su zimbra -c '/opt/zimbra/bin/zmcertmgr deploycrt comm "/etc/letsencrypt/live/mail2.sumonahmed.xyz/cert.pem" "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"'
-rm -f "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
+su zimbra -c '/opt/zimbra/bin/zmcertmgr deploycrt comm "/etc/letsencrypt/live/mail.sumonahmed.xyz/cert.pem" "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"'
+rm -f "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
 
 sleep 2
 sudo su zimbra -c '/opt/zimbra/bin/zmcontrol restart'
@@ -277,17 +277,17 @@ sudo su zimbra -c '/opt/zimbra/bin/zmcontrol restart'
 ```bash
 cat >> /usr/local/sbin/letsencrypt-zimbra << EOF
 #!/bin/bash
-/usr/local/sbin/certbot certonly -d mail2.sumonahmed.xyz --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
-cp "/etc/letsencrypt/live/mail2.sumonahmed.xyz/privkey.pem" /opt/zimbra/ssl/zimbra/commercial/commercial.key
+/usr/local/sbin/certbot certonly -d mail.sumonahmed.xyz --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
+cp "/etc/letsencrypt/live/mail.sumonahmed.xyz/privkey.pem" /opt/zimbra/ssl/zimbra/commercial/commercial.key
 chown zimbra:zimbra /opt/zimbra/ssl/zimbra/commercial/commercial.key
 wget -O /tmp/ISRG-X2.pem https://letsencrypt.org/certs/isrg-root-x2.pem
-rm -f "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
-cp "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chain.pem" "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
-cat /tmp/ISRG-X2.pem >> "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
+rm -f "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
+cp "/etc/letsencrypt/live/mail.sumonahmed.xyz/chain.pem" "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
+cat /tmp/ISRG-X2.pem >> "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
 chown zimbra:zimbra /etc/letsencrypt -R
 cd /tmp
-su zimbra -c '/opt/zimbra/bin/zmcertmgr deploycrt comm "/etc/letsencrypt/live/mail2.sumonahmed.xyz/cert.pem" "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"'
-rm -f "/etc/letsencrypt/live/mail2.sumonahmed.xyz/chainZimbra.pem"
+su zimbra -c '/opt/zimbra/bin/zmcertmgr deploycrt comm "/etc/letsencrypt/live/mail.sumonahmed.xyz/cert.pem" "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"'
+rm -f "/etc/letsencrypt/live/mail.sumonahmed.xyz/chainZimbra.pem"
 sleep 2
 sudo su zimbra -c '/opt/zimbra/bin/zmcontrol restart'
 EOF
@@ -314,7 +314,7 @@ vim /etc/crontab
 | Step | Status | Notes |
 |---|---|---|
 | DNS / resolv.conf configured | ✅ | Static resolvers set |
-| Static IP via Netplan | ✅ | `103.118.87.130/26` |
+| Static IP via Netplan | ✅ | `103.XXX.XX.XXX/26` |
 | Locale set to en_US.UTF-8 | ✅ | Required by Zimbra installer |
 | Stock Postfix disabled | ✅ | Avoids port conflict |
 | Hostname set + verified via nslookup | ✅ | Watch the `.131` vs `.130` discrepancy in `/etc/hosts` |
