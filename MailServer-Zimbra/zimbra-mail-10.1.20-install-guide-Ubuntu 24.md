@@ -1,6 +1,6 @@
 # Zimbra OSE 10.1.20 Installation Guide (Annotated)
 **Date:** 03-September-2026
-**Target host:** `103.XXX.XX.XXX` → `mail.sumonahmed.xyz`
+**Target host:** `103.XXX.XX.XXX` → `mail.sumon***.***`
 
 > This is your original command list with explanations added under each block, so you (or anyone else) can understand *why* each step exists, not just *what* it does.
 
@@ -131,7 +131,7 @@ systemctl disable postfix
 
 ```bash
 vim /etc/hosts
-103.XXX.XX.XXX mail.sumonahmed.xyz mail
+103.XXX.XX.XXX mail.sumonahmed.*** mail
 ```
 
 **Explanation:** Adds a local hosts-file mapping so the hostname resolves locally even before/independent of DNS propagation. ⚠️ Note the IP here is `103.118.87.131`, which differs from the `103.XXX.XX.XXX` used everywhere else in the guide — double-check this isn't a typo, since a mismatched IP here can cause Zimbra's install-time hostname resolution check to behave unexpectedly.
@@ -241,7 +241,7 @@ ln -s /opt/certbot/bin/certbot /usr/local/sbin/certbot
 **Explanation:** Installs Certbot inside an isolated Python virtual environment (recommended by the official Certbot docs instead of `apt install certbot`, which can be outdated on some distros), then symlinks the binary into `/usr/local/sbin` so it's available system-wide as `certbot`.
 
 ```bash
-/usr/local/sbin/certbot certonly -d mail.sumonahmed.xyz --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
+/usr/local/sbin/certbot certonly -d mail.sumonahmed.*** --standalone --preferred-chain "ISRG Root X2" --agree-tos --register-unsafely-without-email
 ```
 
 **Explanation:** Requests a certificate for `mail.sumonahmed.xyz` using the standalone HTTP challenge method. `--preferred-chain "ISRG Root X2"` requests the newer ISRG Root X2 (ECDSA) chain instead of the default cross-signed chain. `--register-unsafely-without-email` skips providing a contact email (you won't get expiry/renewal notices from Let's Encrypt this way — worth reconsidering).
