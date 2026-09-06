@@ -1,5 +1,5 @@
-# Zimbra OSE 10.1.16 Installation Guide (Annotated)
-**Date:** 07-APRIL-2026
+# Zimbra OSE 10.1.20 Installation Guide (Annotated)
+**Date:** 03-September-2026
 **Target host:** `103.XXX.XX.XXX` → `mail.sumonahmed.xyz`
 
 > This is your original command list with explanations added under each block, so you (or anyone else) can understand *why* each step exists, not just *what* it does.
@@ -10,7 +10,7 @@
 
 ```bash
 ssh mailserver@103.XXX.XX.XXX ssh-port: 22
-mailserver | 12345@Fhl
+mailserver | Mail@2026#fHl
 ```
 
 **Explanation:** Initial SSH login credentials for the server. `ssh-port: 22` just notes the port used (default SSH port). Consider rotating this password after setup and disabling password auth in favor of SSH keys once the server is live.
@@ -155,17 +155,17 @@ nslookup mail.sumonahmed.xyz
 
 ---
 
-## 10. Download and Extract Zimbra OSE - 10.1.16
+## 10. Download and Extract Zimbra OSE - 10.1.20
 
 ```bash
 # Source: https://maldua.github.io/zimbra-foss/downloads/
 # Repo:   https://github.com/maldua/zimbra-foss/releases
 
 cd /opt/
-wget https://github.com/maldua/zimbra-foss/releases/download/zimbra-foss-build-ubuntu-22.04%2F10.1.16.p1/zcs-10.1.16_GA_4200001.UBUNTU22_64.20260310121616.tgz
-tar -xvf zcs-10.1.16_GA_4200001.UBUNTU22_64.20260310121616.tgz
+wget https://github.com/maldua/zimbra-foss/releases/download/zimbra-foss-build-ubuntu-24.04/10.1.20.p1/zcs-10.1.20_GA_4200001.UBUNTU24_64.20260820122254.tgz
+tar -xvf zcs-10.1.20_GA_4200001.UBUNTU24_64.20260820122254.tgz
 
-cd zcs-10.1.16_GA_4200001.UBUNTU22_64.20260310121616/
+cd zcs-10.1.20_GA_4200001.UBUNTU24_64.20260820122254/
 ./install.sh
 ```
 
