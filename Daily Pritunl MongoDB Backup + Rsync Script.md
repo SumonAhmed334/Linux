@@ -14,14 +14,14 @@ Pritunl MongoDB
       |
       | mongodump
       v
-Local Server: 103.7.248.2
+Local Server: 103.XX.XXX.XX
       |
       | /var/backups/pritunl/
       | pritunl-YYYY-MM-DD.tar.gz
       |
       | rsync at 20:30
       v
-Remote Server: 192.168.102.37
+Remote Server: 192.XXX.XXX.XX
       |
       | /root/pritunl-248.2/
       | pritunl-YYYY-MM-DD.tar.gz
@@ -40,7 +40,7 @@ Remote Server: 192.168.102.37
 
 ## Source / Pritunl Server
 
--   IP: `103.7.248.2`
+-   IP: `103.XXX.XX.XX`
 -   MongoDB host: `127.0.0.1`
 -   MongoDB port: `27075`
 -   MongoDB database: `pritunl`
@@ -48,7 +48,7 @@ Remote Server: 192.168.102.37
 
 ## Remote Backup Server
 
--   IP: `192.168.102.37`
+-   IP: `192.XXX.XXX.XX`
 -   SSH user: `root`
 -   Remote backup directory: `/root/pritunl-248.2/`
 
@@ -334,7 +334,7 @@ require a password.
 From the Pritunl server:
 
 ``` bash
-ssh root@192.168.102.37
+ssh root@192.XXX.XX.XX
 ```
 
 Confirm that SSH access works.
@@ -356,7 +356,7 @@ Press Enter through the prompts if the default location is acceptable.
 Then copy the public key:
 
 ``` bash
-ssh-copy-id root@192.168.102.37
+ssh-copy-id root@192.XXX.XXX.XX
 ```
 
 Enter the remote root password when requested.
@@ -364,7 +364,7 @@ Enter the remote root password when requested.
 Test:
 
 ``` bash
-ssh root@192.168.102.37
+ssh root@192.XXX.XXX.XX
 ```
 
 If it logs in without asking for a password, passwordless SSH is
@@ -383,13 +383,13 @@ exit
 From the Pritunl server:
 
 ``` bash
-ssh root@192.168.102.37 "mkdir -p /root/pritunl-248.2 && chmod 700 /root/pritunl-248.2"
+ssh root@192.XXX.XXX.XX "mkdir -p /root/pritunl-248.2 && chmod 700 /root/pritunl-248.2"
 ```
 
 Verify:
 
 ``` bash
-ssh root@192.168.102.37 "ls -ld /root/pritunl-248.2"
+ssh root@192.XXX.XXX.XX "ls -ld /root/pritunl-248.2"
 ```
 
 ------------------------------------------------------------------------
@@ -436,7 +436,7 @@ set -e
 LOCAL_BACKUP="/var/backups/pritunl/"
 
 REMOTE_USER="root"
-REMOTE_HOST="192.168.102.37"
+REMOTE_HOST="192.XXX.XXX.XX"
 REMOTE_BACKUP="/root/pritunl-248.2/"
 
 LOG_FILE="/var/log/pritunl-rsync.log"
@@ -507,7 +507,7 @@ tail -50 /var/log/pritunl-rsync.log
 Check the remote server:
 
 ``` bash
-ssh root@192.168.102.37 "ls -lh /root/pritunl-248.2/"
+ssh root@192.XXX.XXX.XX "ls -lh /root/pritunl-248.2/"
 ```
 
 Expected:
@@ -523,7 +523,7 @@ pritunl-2026-09-03.tar.gz
 Run:
 
 ``` bash
-ssh root@192.168.102.37 \
+ssh root@192.XXX.XXX.XX \
 "tar -tzf /root/pritunl-248.2/pritunl-2026-09-03.tar.gz > /dev/null && echo 'Backup OK'"
 ```
 
@@ -661,7 +661,7 @@ The rsync script copies only:
 to:
 
 ``` text
-root@192.168.102.37:/root/pritunl-248.2/
+root@192.XXX.XXX.XX:/root/pritunl-248.2/
 ```
 
 ------------------------------------------------------------------------
@@ -693,13 +693,13 @@ ls -lht /var/backups/pritunl/ | head
 List remote backups:
 
 ``` bash
-ssh root@192.168.102.37 "ls -lh /root/pritunl-248.2/"
+ssh root@192.XXX.XXX.XX "ls -lh /root/pritunl-248.2/"
 ```
 
 Check the latest remote backup:
 
 ``` bash
-ssh root@192.168.102.37 "ls -lht /root/pritunl-248.2/ | head"
+ssh root@192.XXX.XXX.XX "ls -lht /root/pritunl-248.2/ | head"
 ```
 
 Check rsync log:
@@ -820,13 +820,13 @@ du -sh /var/backups/pritunl/
 ## Check remote disk space
 
 ``` bash
-ssh root@192.168.102.37 "df -h"
+ssh root@192.XXX.XXX.XX "df -h"
 ```
 
 ## Check remote backup directory size
 
 ``` bash
-ssh root@192.168.102.37 "du -sh /root/pritunl-248.2/"
+ssh root@192.XXX.XXX.XX "du -sh /root/pritunl-248.2/"
 ```
 
 ------------------------------------------------------------------------
@@ -836,7 +836,7 @@ ssh root@192.168.102.37 "du -sh /root/pritunl-248.2/"
 Test:
 
 ``` bash
-ssh -v root@192.168.102.37
+ssh -v root@192.XXX.XXX.XX
 ```
 
 Check public key:
@@ -848,7 +848,7 @@ cat /root/.ssh/id_ed25519.pub
 Check authorized keys on remote server:
 
 ``` bash
-ssh root@192.168.102.37 "cat /root/.ssh/authorized_keys"
+ssh root@192.XXX.XXX.XX "cat /root/.ssh/authorized_keys"
 ```
 
 Check SSH permissions:
@@ -1053,7 +1053,7 @@ Every day 20:30
     |
     +--> rsync *.tar.gz
     |
-    +--> remote server 192.168.102.37
+    +--> remote server 192.XXX.XXX.XX
     |
     +--> /root/pritunl-248.2/
 ```
@@ -1104,19 +1104,19 @@ Expected:
 ### Passwordless SSH
 
 ``` bash
-ssh root@192.168.102.37 "hostname"
+ssh root@192.XXX.XXX.XX "hostname"
 ```
 
 ### Remote backups
 
 ``` bash
-ssh root@192.168.102.37 "ls -lh /root/pritunl-248.2/"
+ssh root@192.XXX.XXX.XX "ls -lh /root/pritunl-248.2/"
 ```
 
 ### Remote archive integrity
 
 ``` bash
-ssh root@192.168.102.37 \
+ssh root@192.XXX.XXX.XX \
 "tar -tzf /root/pritunl-248.2/pritunl-2026-09-03.tar.gz > /dev/null && echo 'Backup OK'"
 ```
 
@@ -1157,7 +1157,7 @@ The completed solution provides:
 -   Backup format: **TAR.GZ**
 -   Local backup storage: `/var/backups/pritunl/`
 -   Daily remote synchronization at **20:30**
--   Remote server: `192.168.102.37`
+-   Remote server: `192.XXX.XXX.XX`
 -   Remote storage: `/root/pritunl-248.2/`
 -   Passwordless SSH authentication
 -   Rsync synchronization
