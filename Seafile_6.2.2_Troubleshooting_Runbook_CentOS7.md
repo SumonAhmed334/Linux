@@ -4,12 +4,12 @@
 
 - **Hostname:** FHL-SMB-SEA
 - **OS:** CentOS Linux 7 (Core)
-- **Server IP:** `192.168.42.14`
+- **Server IP:** `192.168.XX.XX`
 - **Seafile Version:** `6.2.2`
 - **Installation Root:** `/opt/seafile/install`
 - **Seafile Application:** `/opt/seafile/install/seafile-server-6.2.2`
 - **Latest Symlink:** `/opt/seafile/install/seafile-server-latest`
-- **Seafile GUI:** `http://192.168.42.14:8000`
+- **Seafile GUI:** `http://192.168.XX.XX:8000`
 - **MySQL:** `127.0.0.1:3306`
 
 > **Purpose:** Troubleshoot and recover the existing Seafile installation without unnecessarily reinstalling Seafile or modifying existing libraries/data.
@@ -103,7 +103,7 @@ ss -lntp | grep -E ':80|:443|:8000|:8082'
 For this installation, port `8000` is important because the configuration contains:
 
 ```text
-SERVICE_URL = http://192.168.42.14:8000
+SERVICE_URL = http://192.168.XX.XX:8000
 ```
 
 Check specifically:
@@ -226,7 +226,7 @@ The existing `ccnet.conf` contains the following important values:
 USER_NAME = FHL-SMB-SEA
 ID = <server-id>
 NAME = FHL-SMB-SEA
-SERVICE_URL = http://192.168.42.14:8000
+SERVICE_URL = http://192.168.XX.XX:8000
 
 [Client]
 PORT = 13419
@@ -505,7 +505,7 @@ curl -I http://127.0.0.1:8000
 Test server IP:
 
 ```bash
-curl -I http://192.168.42.14:8000
+curl -I http://192.168.XX.XX:8000
 ```
 
 If working, open:
@@ -830,7 +830,7 @@ curl -I http://127.0.0.1:8000
 ```
 
 ```bash
-curl -I http://192.168.42.14:8000
+curl -I http://192.168.XX.XX:8000
 ```
 
 Then check:
