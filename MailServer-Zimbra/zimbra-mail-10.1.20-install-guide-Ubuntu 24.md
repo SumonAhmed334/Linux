@@ -173,8 +173,8 @@ cd zcs-10.1.20_GA_4200001.UBUNTU24_64.20260820122254/
 
 **Admin credentials captured during install:**
 ```
-admin-password: wP_H!five@111101
-admin@mail.sumonahmed.xyz
+admin-password: wP_******@111101
+admin@mail.sumon****.***
 ```
 
 **Access points after install:**
