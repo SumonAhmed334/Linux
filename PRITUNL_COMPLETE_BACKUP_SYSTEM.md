@@ -31,7 +31,7 @@
 
                               ┌──────────────────┐
                               │  Pritunl Server 1│
-                              │  (103.7.248.2)   │
+                              │  (1XX.XXX.XXX.2)   │
                               │   Ubuntu/Debian  │
                               │                  │
                               │ MongoDB:27075    │
@@ -64,11 +64,11 @@
        │                                        │                      │
    ┌───▼────────────────┐          ┌────────────▼──────────────────┐  │
    │ Pritunl Server 2   │          │    Backup Server Central      │  │
-   │ (103.7.248.11)     │          │    (192.168.102.37)          │  │
+   │ (1XX.XXX.XXX.11)     │          │    (192.168.0.XXX)          │  │
    │ CentOS 7           │          │                              │  │
    │                    │          │ /home/backup/pritunl/        │  │
-   │ MongoDB:27017      │          │ ├─ 248.2/  (Server 1 backups)│  │
-   │                    │          │ ├─ 248.11/ (Server 2 backups)│  │
+   │ MongoDB:27017      │          │ ├─ XXX.2/  (Server 1 backups)│  │
+   │                    │          │ ├─ XXX.11/ (Server 2 backups)│  │
    │ 20:00 Daily Backup │          │ └─ Auto-cleanup (15 days)    │  │
    │ 20:03 Daily Rsync  │          │                              │  │
    └───────────────────┘          └──────────────────────────────┘  │
@@ -89,7 +89,7 @@
 #### **Server 1: Pritunl Primary**
 ```
 ├─ Hostname: openvpn-2fa
-├─ IP Address: 103.7.248.2
+├─ IP Address: 1XX.XXX.XXX.2
 ├─ Operating System: Ubuntu/Debian
 ├─ MongoDB Port: 27075 (Pritunl Service)
 ├─ Backup User: backup
@@ -103,7 +103,7 @@
 #### **Server 2: Pritunl Secondary**
 ```
 ├─ Hostname: OFF-NAG-CACTI-VPN
-├─ IP Address: 103.7.248.11
+├─ IP Address: 1XX.XXX.XXX.11
 ├─ Operating System: CentOS 7
 ├─ MongoDB Port: 27017 (Standalone MongoDB)
 ├─ Backup User: backup
@@ -116,12 +116,12 @@
 
 #### **Backup Server: Central Repository**
 ```
-├─ IP Address: 192.168.102.37
+├─ IP Address: 192.168.0.XXX
 ├─ Operating System: Ubuntu/Debian
 ├─ Backup User: backup
 ├─ Backup Path: /home/backup/pritunl/
-│  ├─ 248.2/   (Server 1 backups)
-│  └─ 248.11/  (Server 2 backups)
+│  ├─ XXX.2/   (Server 1 backups)
+│  └─ XXX.11/  (Server 2 backups)
 ├─ Retention: 15 days (auto-cleanup)
 └─ SSH authorized_keys: Public keys from both servers
 ```
@@ -150,7 +150,7 @@ pritunl-YYYY-MM-DD.tar.gz (Local Storage)
            │ SSH Public Key Auth
            │
            ▼
-192.168.102.37:/home/backup/pritunl/248.X/
+192.168.0.XXX:/home/backup/pritunl/248.X/
            │
            │ Retention Cleanup (15 days)
            │
@@ -173,15 +173,15 @@ pritunl-YYYY-MM-DD.tar.gz (Local Storage)
 ### 📋 Required Ports
 
 ```
-Server 1 (103.7.248.2):
+Server 1 (1XX.XXX.XXX.2):
 ├─ 22   (SSH for rsync)
 └─ 27075 (MongoDB)
 
-Server 2 (103.7.248.11):
+Server 2 (1XX.XXX.XXX.11):
 ├─ 22   (SSH for rsync)
 └─ 27017 (MongoDB)
 
-Backup Server (192.168.102.37):
+Backup Server (192.168.0.XXX):
 ├─ 22   (SSH access)
 └─ Storage: /home/backup/pritunl/
 ```
@@ -190,12 +190,12 @@ Backup Server (192.168.102.37):
 
 ## Complete Setup Process
 
-### ⚙️ STEP 1: SERVER 1 (103.7.248.2) - Initial Setup
+### ⚙️ STEP 1: SERVER 1 (1XX.XXX.XXX.2) - Initial Setup
 
 #### Step 1.1: SSH to Server 1
 
 ```bash
-ssh root@103.7.248.2
+ssh root@1XX.XXX.XXX.2
 ```
 
 #### Step 1.2: Create Backup User and Directories
@@ -342,8 +342,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/db-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/pritunl/248.2"
+REMOTE_HOST="192.168.0.XXX"
+REMOTE_BACKUP="/home/backup/pritunl/XXX.2"
 
 LOG_FILE="/var/log/pritunl-backup/rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -392,7 +392,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/pritunl/248.2"
+    REMOTE_BACKUP="/home/backup/pritunl/XXX.2"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "pritunl-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -428,28 +428,28 @@ ls -la /home/backup/.ssh/
 
 ---
 
-### 🔧 STEP 2: BACKUP SERVER (192.168.102.37) - Preparation
+### 🔧 STEP 2: BACKUP SERVER (192.168.0.XXX) - Preparation
 
 #### Step 2.1: SSH to Backup Server
 
 ```bash
-ssh root@192.168.102.37
+ssh root@192.168.0.XXX
 ```
 
 #### Step 2.2: Create Directories for Server 1
 
 ```bash
 # Create directories
-mkdir -p /home/backup/pritunl/248.2
-mkdir -p /home/backup/pritunl/248.11
+mkdir -p /home/backup/pritunl/XXX.2
+mkdir -p /home/backup/pritunl/XXX.11
 
 # Set ownership
-chown backup:backup /home/backup/pritunl/248.2
-chown backup:backup /home/backup/pritunl/248.11
+chown backup:backup /home/backup/pritunl/XXX.2
+chown backup:backup /home/backup/pritunl/XXX.11
 
 # Set permissions
-chmod 755 /home/backup/pritunl/248.2
-chmod 755 /home/backup/pritunl/248.11
+chmod 755 /home/backup/pritunl/XXX.2
+chmod 755 /home/backup/pritunl/XXX.11
 
 # Verify
 ls -la /home/backup/pritunl/
@@ -465,7 +465,7 @@ chown backup:backup /home/backup/.ssh/authorized_keys
 
 # Add Server 1 public key (paste the key from Step 1.3)
 cat >> /home/backup/.ssh/authorized_keys << 'EOF'
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... backup@103.7.248.2
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... backup@1XX.XXX.XXX.2
 EOF
 
 # Verify
@@ -479,14 +479,14 @@ cat /home/backup/.ssh/authorized_keys
 #### Step 3.1: Back to Server 1
 
 ```bash
-ssh root@103.7.248.2
+ssh root@1XX.XXX.XXX.2
 ```
 
 #### Step 3.2: Test SSH Connection
 
 ```bash
 # Test SSH (should not ask for password)
-sudo -u backup ssh backup@192.168.102.37 "whoami"
+sudo -u backup ssh backup@192.168.0.XXX "whoami"
 
 # Expected output: backup
 ```
@@ -517,12 +517,12 @@ sudo crontab -u backup -l
 
 ---
 
-### 🔧 STEP 4: SERVER 2 (103.7.248.11) - CentOS 7 Setup
+### 🔧 STEP 4: SERVER 2 (1XX.XXX.XXX.11) - CentOS 7 Setup
 
 #### Step 4.1: SSH to Server 2
 
 ```bash
-ssh root@103.7.248.11
+ssh root@1XX.XXX.XXX.11
 ```
 
 #### Step 4.2: Create Backup User and Directories
@@ -657,8 +657,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/db-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/pritunl/248.11"
+REMOTE_HOST="192.168.0.XXX"
+REMOTE_BACKUP="/home/backup/pritunl/XXX.11"
 
 LOG_FILE="/var/log/pritunl-backup/rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -707,7 +707,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/pritunl/248.11"
+    REMOTE_BACKUP="/home/backup/pritunl/XXX.11"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "pritunl-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -755,7 +755,7 @@ sudo crontab -u backup -l
 #### Step 5.1: Back to Backup Server
 
 ```bash
-ssh root@192.168.102.37
+ssh root@192.168.0.XXX
 ```
 
 #### Step 5.2: Add Server 2 Public Key
@@ -763,7 +763,7 @@ ssh root@192.168.102.37
 ```bash
 # Add Server 2 public key to authorized_keys
 cat >> /home/backup/.ssh/authorized_keys << 'EOF'
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... backup@103.7.248.11
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... backup@1XX.XXX.XXX.11
 EOF
 
 # Verify both keys
@@ -830,7 +830,7 @@ cat /home/backup/.ssh/authorized_keys
    └─ /home/backup/db-backup/
 
 2. Connect to remote server via SSH
-   ├─ Host: 192.168.102.37
+   ├─ Host: 192.168.0.XXX
    ├─ User: backup
    ├─ Auth: RSA public key (no password)
    └─ Command: Create remote directory
@@ -856,7 +856,7 @@ cat /home/backup/.ssh/authorized_keys
 |----------|---------|-------|
 | LOCAL_BACKUP | Local backup path | /home/backup/db-backup |
 | REMOTE_USER | Remote SSH user | backup |
-| REMOTE_HOST | Remote backup server | 192.168.102.37 |
+| REMOTE_HOST | Remote backup server | 192.168.0.XXX |
 | REMOTE_BACKUP | Remote backup path | /home/backup/pritunl/248.X |
 
 ---
@@ -891,7 +891,7 @@ Minute (0-59)
 ### 📂 Directory Structure
 
 ```
-Pritunl Server 1 (103.7.248.2)
+Pritunl Server 1 (1XX.XXX.XXX.2)
 ├── /home/backup/
 │   ├── db-backup/                    (Daily backups stored here)
 │   │   ├── pritunl-2026-09-10.tar.gz (3.1M)
@@ -908,7 +908,7 @@ Pritunl Server 1 (103.7.248.2)
     ├── backup.log                    (MongoDB backup logs)
     └── rsync.log                     (Rsync sync logs)
 
-Pritunl Server 2 (103.7.248.11)
+Pritunl Server 2 (1XX.XXX.XXX.11)
 ├── /home/backup/
 │   ├── db-backup/
 │   │   └── pritunl-*.tar.gz
@@ -923,16 +923,16 @@ Pritunl Server 2 (103.7.248.11)
     ├── backup.log
     └── rsync.log
 
-Backup Server (192.168.102.37)
+Backup Server (192.168.0.XXX)
 └── /home/backup/
     ├── .ssh/
     │   ├── authorized_keys (Contains public keys from both servers)
     │   └── known_hosts
     └── pritunl/
-        ├── 248.2/                   (Server 1 backups)
+        ├── XXX.2/                   (Server 1 backups)
         │   ├── pritunl-2026-09-10.tar.gz
         │   └── pritunl-2026-09-11.tar.gz
-        └── 248.11/                  (Server 2 backups)
+        └── XXX.11/                  (Server 2 backups)
             ├── pritunl-2026-09-10.tar.gz
             └── pritunl-2026-09-11.tar.gz
 ```
@@ -950,13 +950,13 @@ Every Day at 20:00 (8:00 PM):
             └─ Both create tar.gz files locally
 
 Every Day at 20:03 (8:03 PM):
-└─ Server 2: rsync → 192.168.102.37:/home/backup/pritunl/248.11/
+└─ Server 2: rsync → 192.168.0.XXX:/home/backup/pritunl/XXX.11/
    ├─ Sync all .tar.gz files
    ├─ Delete removed backups from remote
    └─ Clean up backups older than 15 days
 
 Every Day at 20:05 (8:05 PM):
-└─ Server 1: rsync → 192.168.102.37:/home/backup/pritunl/248.2/
+└─ Server 1: rsync → 192.168.0.XXX:/home/backup/pritunl/XXX.2/
    ├─ Sync all .tar.gz files
    ├─ Delete removed backups from remote
    └─ Clean up backups older than 15 days
@@ -1000,11 +1000,11 @@ ls -lh /home/backup/db-backup/
 ls -lh /home/backup/db-backup/
 
 # Check remote backups
-ssh backup@192.168.102.37 "ls -lh /home/backup/pritunl/248.2/"
-ssh backup@192.168.102.37 "ls -lh /home/backup/pritunl/248.11/"
+ssh backup@192.168.0.XXX "ls -lh /home/backup/pritunl/XXX.2/"
+ssh backup@192.168.0.XXX "ls -lh /home/backup/pritunl/XXX.11/"
 
 # Check total backup size
-ssh backup@192.168.102.37 "du -sh /home/backup/pritunl/"
+ssh backup@192.168.0.XXX "du -sh /home/backup/pritunl/"
 ```
 
 ---
@@ -1049,43 +1049,43 @@ echo "PRITUNL BACKUP SYSTEM STATUS"
 echo "=========================================="
 echo ""
 
-echo "=== SERVER 1 (103.7.248.2) ==="
+echo "=== SERVER 1 (1XX.XXX.XXX.2) ==="
 echo "Local Backups:"
-ssh root@103.7.248.2 "ls -lh /home/backup/db-backup/ | tail -5"
+ssh root@1XX.XXX.XXX.2 "ls -lh /home/backup/db-backup/ | tail -5"
 
 echo ""
 echo "Crontab:"
-ssh root@103.7.248.2 "sudo crontab -u backup -l"
+ssh root@1XX.XXX.XXX.2 "sudo crontab -u backup -l"
 
 echo ""
 echo "Recent Backup Log:"
-ssh root@103.7.248.2 "tail -10 /var/log/pritunl-backup/backup.log"
+ssh root@1XX.XXX.XXX.2 "tail -10 /var/log/pritunl-backup/backup.log"
 
 echo ""
-echo "=== SERVER 2 (103.7.248.11) ==="
+echo "=== SERVER 2 (1XX.XXX.XXX.11) ==="
 echo "Local Backups:"
-ssh root@103.7.248.11 "ls -lh /home/backup/db-backup/ | tail -5"
+ssh root@1XX.XXX.XXX.11 "ls -lh /home/backup/db-backup/ | tail -5"
 
 echo ""
 echo "Crontab:"
-ssh root@103.7.248.11 "sudo crontab -u backup -l"
+ssh root@1XX.XXX.XXX.11 "sudo crontab -u backup -l"
 
 echo ""
 echo "Recent Backup Log:"
-ssh root@103.7.248.11 "tail -10 /var/log/pritunl-backup/backup.log"
+ssh root@1XX.XXX.XXX.11 "tail -10 /var/log/pritunl-backup/backup.log"
 
 echo ""
-echo "=== BACKUP SERVER (192.168.102.37) ==="
+echo "=== BACKUP SERVER (192.168.0.XXX) ==="
 echo "Server 1 Backups:"
-ssh backup@192.168.102.37 "ls -lh /home/backup/pritunl/248.2/ | tail -5"
+ssh backup@192.168.0.XXX "ls -lh /home/backup/pritunl/XXX.2/ | tail -5"
 
 echo ""
 echo "Server 2 Backups:"
-ssh backup@192.168.102.37 "ls -lh /home/backup/pritunl/248.11/ | tail -5"
+ssh backup@192.168.0.XXX "ls -lh /home/backup/pritunl/XXX.11/ | tail -5"
 
 echo ""
 echo "Total Size:"
-ssh backup@192.168.102.37 "du -sh /home/backup/pritunl/"
+ssh backup@192.168.0.XXX "du -sh /home/backup/pritunl/"
 
 echo ""
 echo "=========================================="
@@ -1120,14 +1120,14 @@ find /home/backup/db-backup -name "pritunl-*.tar.gz" | wc -l
 
 # Check remote backups
 echo "Remote Server 1 Backups:"
-ssh backup@192.168.102.37 "find /home/backup/pritunl/248.2 -name 'pritunl-*.tar.gz' | wc -l"
+ssh backup@192.168.0.XXX "find /home/backup/pritunl/XXX.2 -name 'pritunl-*.tar.gz' | wc -l"
 
 echo "Remote Server 2 Backups:"
-ssh backup@192.168.102.37 "find /home/backup/pritunl/248.11 -name 'pritunl-*.tar.gz' | wc -l"
+ssh backup@192.168.0.XXX "find /home/backup/pritunl/XXX.11 -name 'pritunl-*.tar.gz' | wc -l"
 
 # Total storage used
 echo "Total Storage:"
-ssh backup@192.168.102.37 "du -sh /home/backup/pritunl/"
+ssh backup@192.168.0.XXX "du -sh /home/backup/pritunl/"
 ```
 
 ---
@@ -1147,14 +1147,14 @@ ssh backup@192.168.102.37 "du -sh /home/backup/pritunl/"
 ls -la /home/backup/.ssh/id_rsa
 
 # Check authorized_keys on backup server
-ssh root@192.168.102.37 "cat /home/backup/.ssh/authorized_keys"
+ssh root@192.168.0.XXX "cat /home/backup/.ssh/authorized_keys"
 
 # Check permissions
-ssh root@192.168.102.37 "ls -la /home/backup/.ssh/authorized_keys"
+ssh root@192.168.0.XXX "ls -la /home/backup/.ssh/authorized_keys"
 # Should be: -rw------- 1 backup backup
 
 # Test SSH with verbose output
-sudo -u backup ssh -vv backup@192.168.102.37 "whoami"
+sudo -u backup ssh -vv backup@192.168.0.XXX "whoami"
 ```
 
 ---
@@ -1195,13 +1195,13 @@ ls -la /home/backup/db-backup/
 
 # Test rsync manually
 sudo -u backup rsync -avh /home/backup/db-backup/ \
-  backup@192.168.102.37:/home/backup/pritunl/248.X/
+  backup@192.168.0.XXX:/home/backup/pritunl/248.X/
 
 # Check rsync is installed
 which rsync
 
 # Check remote directory exists
-ssh backup@192.168.102.37 "ls -la /home/backup/pritunl/248.X/"
+ssh backup@192.168.0.XXX "ls -la /home/backup/pritunl/248.X/"
 ```
 
 ---
@@ -1269,59 +1269,59 @@ echo "=== COMPLETE SYSTEM VERIFICATION ==="
 echo ""
 
 # Server 1 Verification
-echo "SERVER 1 (103.7.248.2)"
+echo "SERVER 1 (1XX.XXX.XXX.2)"
 echo "─────────────────────────"
 echo "✓ SSH Access:"
-ssh -o ConnectTimeout=5 root@103.7.248.2 "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
+ssh -o ConnectTimeout=5 root@1XX.XXX.XXX.2 "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
 
 echo "✓ Backup User:"
-ssh root@103.7.248.2 "id backup" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.2 "id backup" 2>/dev/null || echo "  Failed"
 
 echo "✓ Scripts:"
-ssh root@103.7.248.2 "ls -1 /home/backup/scripts/pritunl-*.sh | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.2 "ls -1 /home/backup/scripts/pritunl-*.sh | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Local Backups:"
-ssh root@103.7.248.2 "find /home/backup/db-backup -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.2 "find /home/backup/db-backup -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Crontab:"
-ssh root@103.7.248.2 "sudo crontab -u backup -l 2>/dev/null | grep pritunl | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.2 "sudo crontab -u backup -l 2>/dev/null | grep pritunl | wc -l" 2>/dev/null || echo "  Failed"
 
 echo ""
 
 # Server 2 Verification
-echo "SERVER 2 (103.7.248.11)"
+echo "SERVER 2 (1XX.XXX.XXX.11)"
 echo "─────────────────────────"
 echo "✓ SSH Access:"
-ssh -o ConnectTimeout=5 root@103.7.248.11 "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
+ssh -o ConnectTimeout=5 root@1XX.XXX.XXX.11 "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
 
 echo "✓ Backup User:"
-ssh root@103.7.248.11 "id backup" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.11 "id backup" 2>/dev/null || echo "  Failed"
 
 echo "✓ Scripts:"
-ssh root@103.7.248.11 "ls -1 /home/backup/scripts/pritunl-*.sh | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.11 "ls -1 /home/backup/scripts/pritunl-*.sh | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Local Backups:"
-ssh root@103.7.248.11 "find /home/backup/db-backup -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.11 "find /home/backup/db-backup -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Crontab:"
-ssh root@103.7.248.11 "sudo crontab -u backup -l 2>/dev/null | grep pritunl | wc -l" 2>/dev/null || echo "  Failed"
+ssh root@1XX.XXX.XXX.11 "sudo crontab -u backup -l 2>/dev/null | grep pritunl | wc -l" 2>/dev/null || echo "  Failed"
 
 echo ""
 
 # Backup Server Verification
-echo "BACKUP SERVER (192.168.102.37)"
+echo "BACKUP SERVER (192.168.0.XXX)"
 echo "──────────────────────────────"
 echo "✓ SSH Access:"
-ssh -o ConnectTimeout=5 backup@192.168.102.37 "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
+ssh -o ConnectTimeout=5 backup@192.168.0.XXX "echo OK" 2>/dev/null && echo "  Working" || echo "  Failed"
 
 echo "✓ Server 1 Backups:"
-ssh backup@192.168.102.37 "find /home/backup/pritunl/248.2 -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
+ssh backup@192.168.0.XXX "find /home/backup/pritunl/XXX.2 -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Server 2 Backups:"
-ssh backup@192.168.102.37 "find /home/backup/pritunl/248.11 -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
+ssh backup@192.168.0.XXX "find /home/backup/pritunl/XXX.11 -name 'pritunl-*.tar.gz' | wc -l" 2>/dev/null || echo "  Failed"
 
 echo "✓ Total Size:"
-ssh backup@192.168.102.37 "du -sh /home/backup/pritunl/" 2>/dev/null || echo "  Failed"
+ssh backup@192.168.0.XXX "du -sh /home/backup/pritunl/" 2>/dev/null || echo "  Failed"
 
 echo ""
 echo "=== END OF VERIFICATION ==="
