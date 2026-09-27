@@ -3,7 +3,7 @@
 **Version:** 2.0  
 **Date:** 2026-09-24  
 **Status:** Production Ready ✅  
-**Servers:** 103.7.248.2 (openvpn-2fa) + 103.7.248.11 (OFF-NAG-CACTI-VPN)
+**Servers:** XXX.XX.XXX.2 (openvpn-2fa) + XXX.XX.XXX.11 (NAG-CACTI-VPN)
 
 ---
 
@@ -11,8 +11,8 @@
 
 1. [System Architecture](#system-architecture)
 2. [Infrastructure Overview](#infrastructure-overview)
-3. [Server 248.2 Complete Setup](#server-2482-complete-setup)
-4. [Server 248.11 Complete Setup](#server-24811-complete-setup)
+3. [Server XXX.2 Complete Setup](#server-2482-complete-setup)
+4. [Server XXX.11 Complete Setup](#server-24811-complete-setup)
 5. [Backup Server Configuration](#backup-server-configuration)
 6. [Daily Backup Schedule](#daily-backup-schedule)
 7. [Disaster Recovery Guide](#disaster-recovery-guide)
@@ -31,7 +31,7 @@
 └──────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────┐
-│ Pritunl Server 1: 103.7.248.2              │
+│ Pritunl Server 1: XXX.XX.XXX.2              │
 │ (openvpn-2fa / Ubuntu Debian)              │
 │                                             │
 │ Backups:                                    │
@@ -58,8 +58,8 @@
                       │
                       ▼
     ┌──────────────────────────────┐
-    │  Backup Server 192.168.102.37│
-    │  /home/backup/248.2/         │
+    │  Backup Server 192.XXX.XXX.37│
+    │  /home/backup/XXX.2/         │
     │                              │
     │  ├─ pritunl/                │
     │  ├─ users-backup/           │
@@ -83,7 +83,7 @@
            │ Rsync                      │ Rsync
            │                            │
 ┌──────────▼────────────────────────────▼──────────┐
-│ Pritunl Server 2: 103.7.248.11                  │
+│ Pritunl Server 2: XXX.XX.XXX.11                  │
 │ (OFF-NAG-CACTI-VPN / CentOS 7)                  │
 │                                                  │
 │ Backups:                                         │
@@ -99,24 +99,24 @@
 
 ### Server Details
 
-| Component | Server 248.2 | Server 248.11 | Backup Server |
+| Component | Server XXX.2 | Server XXX.11 | Backup Server |
 |-----------|--------------|---------------|---------------|
-| **IP** | 103.7.248.2 | 103.7.248.11 | 192.168.102.37 |
+| **IP** | XXX.XX.XXX.2 | XXX.XX.XXX.11 | 192.XXX.XXX.37 |
 | **Hostname** | openvpn-2fa | OFF-NAG-CACTI-VPN | vm-pritunl |
 | **OS** | Ubuntu 22.04 | CentOS 7 | Ubuntu 22.04 |
 | **MongoDB Port** | 27075 | 27017 | N/A |
 | **Backup User** | backup | backup | backup |
-| **Backup Path** | /home/backup/ | /home/backup/ | /home/backup/248.2/, /home/backup/248.11/ |
+| **Backup Path** | /home/backup/ | /home/backup/ | /home/backup/XXX.2/, /home/backup/XXX.11/ |
 | **Cron as** | Backup User + Root | Backup User + Root | N/A |
 
 ---
 
-## Server 248.2 Complete Setup
+## Server XXX.2 Complete Setup
 
 ### 📥 STEP 1: Create Backup User & Directories
 
 ```bash
-ssh root@103.7.248.2
+ssh root@XXX.XX.XXX.2
 
 # Create backup user
 userdel -f backup 2>/dev/null || true
@@ -251,8 +251,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/db-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.2/pritunl"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.2/pritunl"
 
 LOG_FILE="/var/log/pritunl-backup/rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -301,7 +301,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.2/pritunl"
+    REMOTE_BACKUP="/home/backup/XXX.2/pritunl"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "pritunl-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -486,8 +486,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/users-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.2/users-backup"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.2/users-backup"
 
 LOG_FILE="/var/log/pritunl-backup/users-rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -536,7 +536,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.2/users-backup"
+    REMOTE_BACKUP="/home/backup/XXX.2/users-backup"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "users-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -566,8 +566,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/netplan-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.2/netplan-backup"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.2/netplan-backup"
 
 LOG_FILE="/var/log/pritunl-backup/netplan-rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -616,7 +616,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.2/netplan-backup"
+    REMOTE_BACKUP="/home/backup/XXX.2/netplan-backup"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "netplan-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -637,7 +637,7 @@ chown backup:backup /home/backup/scripts/netplan-rsync.sh
 
 ---
 
-### 📥 STEP 4: Add Sudoers Permission (Server 248.2)
+### 📥 STEP 4: Add Sudoers Permission (Server XXX.2)
 
 ```bash
 visudo
@@ -651,7 +651,7 @@ backup ALL=(ALL) NOPASSWD: /bin/cp, /bin/cp -r
 
 ---
 
-### 📥 STEP 5: Setup Crontab (Server 248.2)
+### 📥 STEP 5: Setup Crontab (Server XXX.2)
 
 #### Root Crontab
 
@@ -695,12 +695,12 @@ Add:
 
 ---
 
-## Server 248.11 Complete Setup
+## Server XXX.11 Complete Setup
 
 ### 📥 STEP 1: Create Backup User & Directories
 
 ```bash
-ssh root@103.7.248.11
+ssh root@XXX.XX.XXX.11
 
 # Create backup user
 userdel -f backup 2>/dev/null || true
@@ -745,7 +745,7 @@ ls -la /home/backup/.ssh/
 
 ---
 
-### 📥 STEP 3: Create Backup Scripts (248.11 - MongoDB Port 27017)
+### 📥 STEP 3: Create Backup Scripts (XXX.11 - MongoDB Port 27017)
 
 #### MongoDB Backup Script (Port 27017 for CentOS)
 
@@ -826,7 +826,7 @@ chown backup:backup /home/backup/scripts/pritunl-mongodb-backup.sh
 
 ---
 
-#### MongoDB Rsync Script (248.11)
+#### MongoDB Rsync Script (XXX.11)
 
 ```bash
 cat > /home/backup/scripts/pritunl-rsync-backup.sh << 'EOF'
@@ -835,8 +835,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/db-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.11/pritunl"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.11/pritunl"
 
 LOG_FILE="/var/log/pritunl-backup/rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -885,7 +885,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.11/pritunl"
+    REMOTE_BACKUP="/home/backup/XXX.11/pritunl"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "pritunl-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -906,7 +906,7 @@ chown backup:backup /home/backup/scripts/pritunl-rsync-backup.sh
 
 ---
 
-#### Users Backup Script (ROOT - 248.11)
+#### Users Backup Script (ROOT - XXX.11)
 
 ```bash
 cat > /root/users-backup.sh << 'EOF'
@@ -986,7 +986,7 @@ chmod 755 /root/users-backup.sh
 
 ---
 
-#### Netplan Backup Script (ROOT - 248.11)
+#### Netplan Backup Script (ROOT - XXX.11)
 
 ```bash
 cat > /root/netplan-backup.sh << 'EOF'
@@ -1061,7 +1061,7 @@ chmod 755 /root/netplan-backup.sh
 
 ---
 
-#### Users Rsync Script (BACKUP USER - 248.11)
+#### Users Rsync Script (BACKUP USER - XXX.11)
 
 ```bash
 cat > /home/backup/scripts/users-rsync.sh << 'EOF'
@@ -1070,8 +1070,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/users-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.11/users-backup"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.11/users-backup"
 
 LOG_FILE="/var/log/pritunl-backup/users-rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -1120,7 +1120,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.11/users-backup"
+    REMOTE_BACKUP="/home/backup/XXX.11/users-backup"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "users-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -1141,7 +1141,7 @@ chown backup:backup /home/backup/scripts/users-rsync.sh
 
 ---
 
-#### Netplan Rsync Script (BACKUP USER - 248.11)
+#### Netplan Rsync Script (BACKUP USER - XXX.11)
 
 ```bash
 cat > /home/backup/scripts/netplan-rsync.sh << 'EOF'
@@ -1150,8 +1150,8 @@ set -e
 
 LOCAL_BACKUP="/home/backup/netplan-backup"
 REMOTE_USER="backup"
-REMOTE_HOST="192.168.102.37"
-REMOTE_BACKUP="/home/backup/248.11/netplan-backup"
+REMOTE_HOST="192.XXX.XXX.37"
+REMOTE_BACKUP="/home/backup/XXX.11/netplan-backup"
 
 LOG_FILE="/var/log/pritunl-backup/netplan-rsync.log"
 DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -1200,7 +1200,7 @@ fi
 echo "[INFO] Cleaning remote (15 days)..."
 
 ssh "${REMOTE_USER}@${REMOTE_HOST}" bash -s << 'REMOTE_SCRIPT'
-    REMOTE_BACKUP="/home/backup/248.11/netplan-backup"
+    REMOTE_BACKUP="/home/backup/XXX.11/netplan-backup"
     find "${REMOTE_BACKUP}" -maxdepth 1 -name "netplan-*.tar.gz" -type f -mtime +15 2>/dev/null | while read -r old_backup; do
         echo "[INFO] Deleting: $(basename "$old_backup")"
         rm -f "$old_backup"
@@ -1221,7 +1221,7 @@ chown backup:backup /home/backup/scripts/netplan-rsync.sh
 
 ---
 
-### 📥 STEP 4: Setup Crontab (248.11)
+### 📥 STEP 4: Setup Crontab (XXX.11)
 
 #### Root Crontab
 
@@ -1267,40 +1267,40 @@ Add:
 
 ## Backup Server Configuration
 
-### 📥 Setup Backup Server (192.168.102.37)
+### 📥 Setup Backup Server (192.XXX.XXX.37)
 
 ```bash
-ssh root@192.168.102.37
+ssh root@192.XXX.XXX.37
 
 # Create directories
-mkdir -p /home/backup/248.2/pritunl
-mkdir -p /home/backup/248.2/users-backup
-mkdir -p /home/backup/248.2/netplan-backup
-mkdir -p /home/backup/248.2/sudoers-backup
+mkdir -p /home/backup/XXX.2/pritunl
+mkdir -p /home/backup/XXX.2/users-backup
+mkdir -p /home/backup/XXX.2/netplan-backup
+mkdir -p /home/backup/XXX.2/sudoers-backup
 
-mkdir -p /home/backup/248.11/pritunl
-mkdir -p /home/backup/248.11/users-backup
-mkdir -p /home/backup/248.11/netplan-backup
+mkdir -p /home/backup/XXX.11/pritunl
+mkdir -p /home/backup/XXX.11/users-backup
+mkdir -p /home/backup/XXX.11/netplan-backup
 
 # Set ownership
-chown -R backup:backup /home/backup/248.2
-chown -R backup:backup /home/backup/248.11
+chown -R backup:backup /home/backup/XXX.2
+chown -R backup:backup /home/backup/XXX.11
 
 # Set permissions
-chmod 755 /home/backup/248.2
-chmod 755 /home/backup/248.2/pritunl
-chmod 755 /home/backup/248.2/users-backup
-chmod 755 /home/backup/248.2/netplan-backup
+chmod 755 /home/backup/XXX.2
+chmod 755 /home/backup/XXX.2/pritunl
+chmod 755 /home/backup/XXX.2/users-backup
+chmod 755 /home/backup/XXX.2/netplan-backup
 
-chmod 755 /home/backup/248.11
-chmod 755 /home/backup/248.11/pritunl
-chmod 755 /home/backup/248.11/users-backup
-chmod 755 /home/backup/248.11/netplan-backup
+chmod 755 /home/backup/XXX.11
+chmod 755 /home/backup/XXX.11/pritunl
+chmod 755 /home/backup/XXX.11/users-backup
+chmod 755 /home/backup/XXX.11/netplan-backup
 
 # Add both servers' public keys to authorized_keys
 cat >> /home/backup/.ssh/authorized_keys << 'EOF'
-ssh-rsa AAAAB3NzaC1yc2E... backup@103.7.248.2
-ssh-rsa AAAAB3NzaC1yc2E... backup@103.7.248.11
+ssh-rsa AAAAB3NzaC1yc2E... backup@XXX.XX.XXX.2
+ssh-rsa AAAAB3NzaC1yc2E... backup@XXX.XX.XXX.11
 EOF
 
 # Verify
@@ -1314,7 +1314,7 @@ cat /home/backup/.ssh/authorized_keys
 ### 📊 Complete Schedule
 
 ```
-SERVER 248.2 (openvpn-2fa):
+SERVER XXX.2 (openvpn-2fa):
 ├─ 20:00 - MongoDB Backup (Backup User)
 ├─ 20:05 - MongoDB Rsync (Backup User)
 ├─ 20:20 - Users Backup (ROOT)
@@ -1322,7 +1322,7 @@ SERVER 248.2 (openvpn-2fa):
 ├─ 20:25 - Netplan Backup (ROOT)
 └─ 20:35 - Netplan Rsync (Backup User)
 
-SERVER 248.11 (OFF-NAG-CACTI-VPN):
+SERVER XXX.11 (OFF-NAG-CACTI-VPN):
 ├─ 20:00 - MongoDB Backup (Backup User)
 ├─ 20:03 - MongoDB Rsync (Backup User)
 ├─ 20:10 - Users Backup (ROOT)
@@ -1330,30 +1330,30 @@ SERVER 248.11 (OFF-NAG-CACTI-VPN):
 ├─ 20:20 - Users Rsync (Backup User)
 └─ 20:25 - Netplan Rsync (Backup User)
 
-BACKUP SERVER (192.168.102.37):
+BACKUP SERVER (192.XXX.XXX.37):
 └─ Receives all backups in:
-   ├─ /home/backup/248.2/
-   └─ /home/backup/248.11/
+   ├─ /home/backup/XXX.2/
+   └─ /home/backup/XXX.11/
 ```
 
 ---
 
 ## Disaster Recovery Guide
 
-### 🚀 If Server 248.2 Goes Down
+### 🚀 If Server XXX.2 Goes Down
 
 ```bash
 # On new hardware:
 1. Install Ubuntu 22.04
 
 2. Get backup files
-ssh backup@192.168.102.37
-ls -lh /home/backup/248.2/
+ssh backup@192.XXX.XXX.37
+ls -lh /home/backup/XXX.2/
 
 3. Download to new server
-scp backup@192.168.102.37:/home/backup/248.2/pritunl/*.tar.gz /tmp/
-scp backup@192.168.102.37:/home/backup/248.2/users-backup/*.tar.gz /tmp/
-scp backup@192.168.102.37:/home/backup/248.2/netplan-backup/*.tar.gz /tmp/
+scp backup@192.XXX.XXX.37:/home/backup/XXX.2/pritunl/*.tar.gz /tmp/
+scp backup@192.XXX.XXX.37:/home/backup/XXX.2/users-backup/*.tar.gz /tmp/
+scp backup@192.XXX.XXX.37:/home/backup/XXX.2/netplan-backup/*.tar.gz /tmp/
 
 4. Restore Netplan FIRST (network)
 tar -xzf /tmp/netplan-*.tar.gz
@@ -1386,8 +1386,8 @@ id backup
 ### ✅ Verify Setup
 
 ```bash
-# Server 248.2
-ssh root@103.7.248.2
+# Server XXX.2
+ssh root@XXX.XX.XXX.2
 
 # Check backup files
 ls -lh /home/backup/db-backup/ | tail -3
@@ -1415,10 +1415,10 @@ tail -20 /var/log/pritunl-backup/users-rsync.log
 ---
 
 ```bash
-# Server 248.11
-ssh root@103.7.248.11
+# Server XXX.11
+ssh root@XXX.XX.XXX.11
 
-# Same checks as 248.2
+# Same checks as XXX.2
 ls -lh /home/backup/db-backup/ | tail -3
 ls -lh /home/backup/users-backup/
 ls -lh /home/backup/netplan-backup/
@@ -1433,21 +1433,21 @@ tail -20 /var/log/pritunl-backup/users-backup.log
 
 ```bash
 # Backup Server
-ssh backup@192.168.102.37
+ssh backup@192.XXX.XXX.37
 
 # Verify all directories
-ls -lh /home/backup/248.2/
-ls -lh /home/backup/248.11/
+ls -lh /home/backup/XXX.2/
+ls -lh /home/backup/XXX.11/
 
 # Check files
-ls -lh /home/backup/248.2/pritunl/ | tail -5
-ls -lh /home/backup/248.2/users-backup/
-ls -lh /home/backup/248.11/pritunl/ | tail -5
-ls -lh /home/backup/248.11/users-backup/
+ls -lh /home/backup/XXX.2/pritunl/ | tail -5
+ls -lh /home/backup/XXX.2/users-backup/
+ls -lh /home/backup/XXX.11/pritunl/ | tail -5
+ls -lh /home/backup/XXX.11/users-backup/
 
 # Check total size
-du -sh /home/backup/248.2/
-du -sh /home/backup/248.11/
+du -sh /home/backup/XXX.2/
+du -sh /home/backup/XXX.11/
 ```
 
 ---
@@ -1465,7 +1465,7 @@ du -sh /home/backup/248.11/
 sudo -u backup ls -la /home/backup/.ssh/id_rsa
 
 # Test SSH
-sudo -u backup ssh backup@192.168.102.37 "whoami"
+sudo -u backup ssh backup@192.XXX.XXX.37 "whoami"
 
 # Should print "backup" without password
 
@@ -1508,13 +1508,13 @@ sudo cp /etc/passwd /tmp/test-passwd
 ```bash
 # Test rsync manually
 sudo -u backup rsync -avh /home/backup/users-backup/ \
-  backup@192.168.102.37:/home/backup/248.2/users-backup/
+  backup@192.XXX.XXX.37:/home/backup/XXX.2/users-backup/
 
 # Check logs
 tail -20 /var/log/pritunl-backup/users-rsync.log
 
 # Verify remote directory exists
-ssh backup@192.168.102.37 "ls -la /home/backup/248.2/users-backup/"
+ssh backup@192.XXX.XXX.37 "ls -la /home/backup/XXX.2/users-backup/"
 ```
 
 ---
@@ -1581,4 +1581,4 @@ Total Protected Data:  100% of configuration
 
 **Status:** Production Ready ✅  
 **Last Updated:** 2026-09-24  
-**Both Servers:** 248.2 & 248.11 Complete
+**Both Servers:** XXX.2 & XXX.11 Complete
