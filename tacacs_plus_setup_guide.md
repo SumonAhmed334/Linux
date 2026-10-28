@@ -21,19 +21,112 @@ Secrets (shared key, passwords, hashes) are replaced with placeholders. Do not p
 
 ## 2. Install timeline (from history)
 
-1. Network check: `ip -br a`, `ping` the gateway and the switch.
-2. Dependencies: `apt install build-essential flex bison libwrap0-dev git`.
-3. Source: `git clone https://github.com/facebook/tac_plus.git`, then `cd tacacs-F4.0.4.28`.
-4. Build: `./configure --prefix=/usr/local && make && make install && ldconfig`, then `tac_plus -v`.
-5. Directories: `mkdir -p /etc/tacacs /var/log/tacacs+`.
-6. Password hash: `tac_pwd` (DES crypt, only the first 8 characters of the password count).
-7. Config written to `/etc/tacacs/tac_plus.conf`, syntax-checked with `tac_plus -C ... -P`.
-8. systemd unit created with `ExecStart=/usr/local/sbin/tac_plus -G -C /etc/tacacs/tac_plus.conf`, then `daemon-reload`, `enable`, `restart`.
-9. Verified with `ss -tulnp | grep :49` and `systemctl status tacacs`.
-10. Timezone set to `Asia/Dhaka` so log times match the switch.
-11. Debug turned on (`-d 1023`) via `sed` on the unit file for troubleshooting.
-12. OS admin accounts `faisal` and `sumon` created and added to `sudo`.
-13. Final config edits (history 242-251, content not in the history) and restart. TACACS login now works.
+### 2.1 Network check
+
+Confirm the server has an IP and can reach the gateway and the switch.
+
+```bash
+ip -br a
+ping 192.168.102.33      # gateway
+ping 192.168.20.81       # switch
+```
+
+### 2.2 Install dependencies
+
+```bash
+apt update
+apt install -y build-essential flex bison libwrap0-dev git
+```
+
+### 2.3 Get the source and build
+
+```bash
+cd /home/tacacs
+git clone https://github.com/facebook/tac_plus.git
+cd tac_plus/tacacs-F4.0.4.28
+./configure --prefix=/usr/local
+make
+make install
+ldconfig
+tac_plus -v
+```
+
+Result: binary at `/usr/local/sbin/tac_plus`, version F4.0.4.28.
+
+### 2.4 Create directories and password hash
+
+```bash
+mkdir -p /etc/tacacs /var/log/tacacs+
+tac_pwd          # type the plain password once; copy the hash it prints
+```
+
+DES crypt uses only the first 8 characters of the password.
+
+### 2.5 Write and check the server config
+
+Write `/etc/tacacs/tac_plus.conf` (template in section 3), then check the syntax:
+
+```bash
+tac_plus -C /etc/tacacs/tac_plus.conf -P
+```
+
+### 2.6 Create the systemd service
+
+`/etc/systemd/system/tacacs.service` (template in section 4), then:
+
+```bash
+systemctl daemon-reload
+systemctl enable tacacs
+systemctl restart tacacs
+```
+
+### 2.7 Verify the service
+
+```bash
+systemctl status tacacs
+ss -tulnp | grep :49
+```
+
+Expected: `active (running)` and `tac_plus` listening on `0.0.0.0:49` and `[::]:49`.
+
+### 2.8 System settings and OS accounts
+
+Timezone, so log times match the switch:
+
+```bash
+timedatectl set-timezone Asia/Dhaka
+```
+
+OS admin accounts:
+
+```bash
+adduser faisal && usermod -aG sudo faisal
+adduser sumon  && usermod -aG sudo sumon
+```
+
+### 2.9 Troubleshooting phase (debug and packet capture)
+
+Debug was turned on in the unit file, and packets were captured to see what the switch sent:
+
+```bash
+sed -i 's|^ExecStart=.*|ExecStart=/usr/local/sbin/tac_plus -G -d 1023 -C /etc/tacacs/tac_plus.conf|' /etc/systemd/system/tacacs.service
+systemctl daemon-reload && systemctl restart tacacs
+journalctl -u tacacs -f
+tcpdump -ni any port 49
+```
+
+`-d 1023` writes the shared key to the log. Remove it after troubleshooting (section 8).
+
+### 2.10 Final config edits
+
+Config backed up (`cp -a /etc/tacacs/tac_plus.conf /etc/tacacs/tac_plus.conf.bak`), edited with `nano` (history 242-251; the content is not in the history), then:
+
+```bash
+systemctl restart tacacs
+systemctl status tacacs
+```
+
+TACACS login now works.
 
 ## 3. Server configuration (template)
 
