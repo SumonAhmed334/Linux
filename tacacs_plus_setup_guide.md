@@ -131,7 +131,7 @@ TACACS login now works.
 ## 3. Server configuration (template)
 
 ```conf
-key = "<SHARED_KEY>"
+key = "tsrfT@cacs$ecretKey2026!""
 accounting file = /var/log/tacacs+/tac_plus.acct
 
 group = netops {
