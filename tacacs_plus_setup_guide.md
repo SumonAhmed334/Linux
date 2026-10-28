@@ -42,7 +42,8 @@ apt install -y build-essential flex bison libwrap0-dev git
 
 ```bash
 cd /home/tacacs
-git clone https://github.com/facebook/tac_plus.git
+wget https://shrubbery.net/pub/tac_plus/tacacs-F4.0.4.32.tar.gz
+tar -xvzf tacacs-F4.0.4.32.tar.gz
 cd tac_plus/tacacs-F4.0.4.28
 ./configure --prefix=/usr/local
 make
