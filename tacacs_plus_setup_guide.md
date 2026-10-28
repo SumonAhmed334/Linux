@@ -1,374 +1,197 @@
-# TACACS+ Full Deployment Guide
-### Ubuntu 22.04 Server + Network Switch (Cisco / Huawei) End Configuration
+# TACACS+ Deployment Notes (tac_plus F4.0.4.28 on Ubuntu 22.04 + Huawei VRP)
 
----
+Reconstructed from the server shell history and the switch/server logs shared during troubleshooting.
+Secrets (shared key, passwords, hashes) are replaced with placeholders. Do not paste real values into this file.
 
-## 1. Overview
+## 1. Final setup at a glance
 
-**TACACS+ (Terminal Access Controller Access-Control System Plus)** is used to centralize:
-- **Authentication** — who can log in
-- **Authorization** — what commands/privilege level they get
-- **Accounting** — logging what they did
+| Item | Value |
+|---|---|
+| TACACS+ server | Ubuntu 22.04.5, host `tacacs`, IP `192.168.102.34/28` (ens18) |
+| Daemon | Shrubbery tac_plus **F4.0.4.28** (classic flat-file syntax), built from source |
+| Binary | `/usr/local/sbin/tac_plus` |
+| Config | `/etc/tacacs/tac_plus.conf` (backup: `tac_plus.conf.bak`) |
+| systemd unit | `/etc/systemd/system/tacacs.service` (service name `tacacs`) |
+| Accounting log | `/var/log/tacacs+/tac_plus.acct` (created on first accounting record) |
+| Port | TCP 49 (UFW inactive) |
+| Switch | Huawei S-series, VRP V200R008C00SPC500, `TEST-SW-RND-NAC` (banner says NMC-DR-SW03), mgmt IP `192.168.20.81` (Vlanif54) |
+| Switch SSH port | 2313 |
+| TACACS user | `ops01` (group `netops`) |
+| Login form | `ops01@tacacs-domain` (domain is stripped before it is sent to the server) |
 
-**Architecture:**
+## 2. Install timeline (from history)
 
+1. Network check: `ip -br a`, `ping` the gateway and the switch.
+2. Dependencies: `apt install build-essential flex bison libwrap0-dev git`.
+3. Source: `git clone https://github.com/facebook/tac_plus.git`, then `cd tacacs-F4.0.4.28`.
+4. Build: `./configure --prefix=/usr/local && make && make install && ldconfig`, then `tac_plus -v`.
+5. Directories: `mkdir -p /etc/tacacs /var/log/tacacs+`.
+6. Password hash: `tac_pwd` (DES crypt, only the first 8 characters of the password count).
+7. Config written to `/etc/tacacs/tac_plus.conf`, syntax-checked with `tac_plus -C ... -P`.
+8. systemd unit created with `ExecStart=/usr/local/sbin/tac_plus -G -C /etc/tacacs/tac_plus.conf`, then `daemon-reload`, `enable`, `restart`.
+9. Verified with `ss -tulnp | grep :49` and `systemctl status tacacs`.
+10. Timezone set to `Asia/Dhaka` so log times match the switch.
+11. Debug turned on (`-d 1023`) via `sed` on the unit file for troubleshooting.
+12. OS admin accounts `faisal` and `sumon` created and added to `sudo`.
+13. Final config edits (history 242-251, content not in the history) and restart. TACACS login now works.
+
+## 3. Server configuration (template)
+
+```conf
+key = "<SHARED_KEY>"
+accounting file = /var/log/tacacs+/tac_plus.acct
+
+group = netops {
+    default service = deny
+    service = exec {
+        priv-lvl = 7
+    }
+    cmd = show    { permit .* }
+    cmd = display { permit .* }
+    cmd = ping    { permit .* }
+    cmd = interface { permit .* }
+    cmd = ip      { permit .* }
+    cmd = shutdown { permit .* }
+    cmd = no      { permit .* }
+    cmd = write   { permit .* }
+    cmd = commit  { permit .* }
+    cmd = quit    { permit .* }
+    cmd = exit    { permit .* }
+}
+
+user = ops01 {
+    name = "Network Operator"
+    member = netops
+    login = des <HASH_FROM_tac_pwd>
+}
 ```
-[Admin PC] --SSH/Telnet--> [Switch/Router] --TCP/49 (TACACS+)--> [TACACS+ Server: Ubuntu 22.04]
-```
 
-This guide uses **tac_plus** (the classic Shrubbery/`tacacs+` daemon, package name `tacacs+` in Ubuntu repos — the same F4.x family you've used before).
+Notes:
+- Classic syntax only: `key =`, `group = {}`, `user = {}`. The `id = spawnd` / `host = world` syntax from the guide you followed belongs to tac_plus-ng and does not work with F4.0.4.28.
+- A global `key` is enough. The log line `no host named 192.168.20.81` is normal when there is no `host =` block.
+- To change a password: run `tac_pwd`, paste the hash into `login = des ...`, then `systemctl restart tacacs`.
+- Huawei needs `cmd = system-view { permit .* }` in the group if operators must enter system-view.
 
----
-
-## 2. Server-Side Setup (Ubuntu 22.04)
-
-### 2.1 Build from source — Shrubbery tac_plus F4.0.4.28
-
-This is the version/method you've already used (confirmed from your shell history), and it's the recommended path since the Ubuntu apt package (`tacacs+`) is an older repackaged build with less predictable behavior. Building from source gives you the canonical Shrubbery daemon.
-
-```bash
-sudo apt update && sudo apt upgrade -y
-
-# Build dependencies (flex + bison are required — configure fails without them)
-sudo apt install -y build-essential libwrap0-dev libpam0g-dev flex bison wget
-
-# Download source
-cd /home/tacacs   # or your preferred build directory
-wget https://www.shrubbery.net/pub/tac_plus/tacacs+-F4.0.4.28.tar.gz
-
-# Extract and build
-# Note: the tarball extracts to "tacacs-F4.0.4.28" (no "+" in the folder name)
-tar -xvzf tacacs+-F4.0.4.28.tar.gz
-cd tacacs-F4.0.4.28
-./configure
-make
-sudo make install
-```
-
-> **If `./configure` still fails after installing flex/bison**, check the exact error line — common next blockers on Ubuntu 22.04 are missing `libpam0g-dev` (already included above) or a missing `pkg-config`. Run `sudo apt install -y pkg-config` if configure complains about it.
-
-This installs the binary (typically to `/usr/local/sbin/tac_plus` — confirm with `which tac_plus` or `find / -name tac_plus -type f 2>/dev/null`).
-
-> **Note on the .deb alternative:** Your history also shows attempts to grab the prebuilt `tacacs+_4.0.4.28-3_amd64.deb` from Ubuntu/kernel.org mirrors. That package is the same version repackaged for apt (installs to `/etc/tacacs+/` and registers a systemd unit automatically), but paths below assume the **source build**, since that's what your `/home/tacacs` history confirms you completed. If you actually ended up using the `.deb` instead, config/binary paths will follow the apt layout (`/etc/tacacs+/tac_plus.conf`, `systemctl` unit `tacacs_plus`) — let me know which one is actually live on the box (`dpkg -l | grep tacacs` will tell you) and I'll adjust the rest of this guide accordingly.
-
-### 2.1.1 Create config directory and systemd service (source build only)
-
-The source build does **not** create `/etc/tacacs+/` or a systemd service automatically — you need to set these up manually:
-
-```bash
-sudo mkdir -p /etc/tacacs+
-sudo mkdir -p /var/log/tac_plus
-```
-
-Create `/etc/systemd/system/tac_plus.service`:
+## 4. systemd unit
 
 ```ini
 [Unit]
-Description=TACACS+ Authentication Daemon
+Description=TACACS+ Server
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/tac_plus -C /etc/tacacs+/tac_plus.conf -d 16
+ExecStart=/usr/local/sbin/tac_plus -G -C /etc/tacacs/tac_plus.conf
 Restart=on-failure
-User=root
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-> Adjust `ExecStart` path if `which tac_plus` shows a different location. `-d 16` enables verbose packet-level debug logging to syslog/console — drop it once things are stable, or lower to `-d 0`.
+Normal operation uses no `-d` flag. `-d 1023` is for troubleshooting only (see section 8).
 
-```bash
-sudo systemctl daemon-reload
+## 5. Huawei switch configuration (what the working setup needs)
+
 ```
-
-### 2.2 Check for port 49 conflicts (common issue)
-
-TACACS+ uses **TCP port 49**. Before starting the service, confirm nothing else is bound to it:
-
-```bash
-sudo ss -tulnp | grep 49
-```
-
-If something else is holding the port (another instance, a stale process, or a container), kill/stop it first:
-
-```bash
-sudo lsof -i :49
-sudo kill -9 <PID>
-```
-
-### 2.3 Configure `/etc/tacacs+/tac_plus.conf`
-
-Back up the default config first:
-
-```bash
-sudo cp /etc/tacacs+/tac_plus.conf /etc/tacacs+/tac_plus.conf.bak
-```
-
-Example working configuration:
-
-```conf
-# ---- Global settings ----
-id = spawnd {
-    listen = { port = 49 }
-    spawn = {
-        instances min = 1
-        instances max = 10
-    }
-    background = yes
-}
-
-id = tac_plus {
-    access log = /var/log/tac_plus/access.log
-    accounting log = /var/log/tac_plus/accounting.log
-
-    # Shared secret between server and NAS (switch/router) — must match on both ends
-    host = world {
-        address = 0.0.0.0/0
-        prompt = "Authorized Access Only\n"
-        key = "YourStrongSharedSecret123"
-    }
-
-    # ---- Group-based command authorization ----
-    group = admin_full {
-        default service = permit
-        service = exec {
-            priv-lvl = 15
-        }
-        cmd = show   { permit .* }
-        cmd = config { permit .* }
-        cmd = reload { permit .* }
-    }
-
-    group = admin_readonly {
-        default service = permit
-        service = exec {
-            priv-lvl = 1
-        }
-        cmd = show { permit .* }
-        cmd = .*   { deny .* }
-    }
-
-    # ---- User accounts ----
-    user = sumon {
-        member = admin_full
-        login = des <encrypted_password_here>
-        # OR for a quick plain-text test (NOT recommended for production):
-        # login = cleartext "TempPass123"
-    }
-
-    user = netops1 {
-        member = admin_readonly
-        login = des <encrypted_password_here>
-    }
-}
-```
-
-**Generate a DES/crypt password hash** to insert into `login = des`:
-
-```bash
-python3 -c "import crypt; print(crypt.crypt('YourPassword', crypt.mksalt(crypt.METHOD_CRYPT)))"
-```
-
-### 2.4 Create log directory
-
-```bash
-sudo mkdir -p /var/log/tac_plus
-sudo chown daemon:daemon /var/log/tac_plus
-```
-
-### 2.5 Validate config syntax
-
-```bash
-sudo tac_plus -C /etc/tacacs+/tac_plus.conf -P
-```
-(`-P` parses and prints the config without starting the daemon — catches syntax errors early.)
-
-### 2.6 Enable & start the service
-
-```bash
-sudo systemctl enable tac_plus
-sudo systemctl restart tac_plus
-sudo systemctl status tac_plus
-```
-
-Watch logs live while testing:
-
-```bash
-sudo tail -f /var/log/tac_plus/access.log
-journalctl -u tac_plus -f
-```
-
-### 2.7 Firewall (UFW / iptables)
-
-Allow TCP/49 **only from your management/switch subnet**:
-
-```bash
-sudo ufw allow from 192.168.10.0/24 to any port 49 proto tcp
-sudo ufw reload
-```
-
-### 2.8 Quick local test
-
-Use `tac_plus`'s companion test tool or `telnet`/`nc` to confirm the port is listening:
-
-```bash
-sudo ss -tulnp | grep 49
-nc -zv <server-ip> 49
-```
-
-For a full protocol test, use `test_tac_plus` (bundled with some builds) or simply test from the switch directly (Section 3).
-
----
-
-## 3. Switch-End Configuration
-
-### 3.1 Cisco IOS / IOS-XE
-
-```cisco
-! Enable AAA
-aaa new-model
-
-! Define TACACS+ server
-tacacs server TAC-SRV1
- address ipv4 <tacacs-server-ip>
- key YourStrongSharedSecret123
- timeout 5
-
-! Group the server(s)
-aaa group server tacacs+ TACGROUP
- server name TAC-SRV1
-
-! Authentication for login
-aaa authentication login default group TACGROUP local
-aaa authentication login VTY_ACCESS group TACGROUP local
-
-! Authorization for commands & exec
-aaa authorization exec default group TACGROUP local
-aaa authorization commands 15 default group TACGROUP local if-authenticated
-
-! Accounting
-aaa accounting exec default start-stop group TACGROUP
-aaa accounting commands 15 default start-stop group TACGROUP
-
-! Apply to VTY lines
-line vty 0 15
- login authentication VTY_ACCESS
- authorization exec default
- authorization commands 15 default
- transport input ssh
-
-! ALWAYS keep a local fallback account before testing
-username localadmin privilege 15 secret LocalBackupPass123
-```
-
-> **Critical safety step:** Test in a *separate* VTY line or keep an active console session open while testing. If TACACS+ is misconfigured, you can lock yourself out.
-
-### 3.2 Huawei (VRP — e.g., S5320 series)
-
-This matches your existing environment. Key gotcha from real deployments: the **HWTACACS scheme must be explicitly bound to an AAA domain**, and that domain must be applied to the VTY authentication-mode — this is the step most commonly missed (and matches the unresolved issue in your S5320 setup).
-
-```huawei
-# Enable HWTACACS (Huawei's TACACS+ implementation)
-hwtacacs-server template TACTPL
-hwtacacs-server authentication <tacacs-server-ip>
-hwtacacs-server authorization <tacacs-server-ip>
-hwtacacs-server accounting <tacacs-server-ip>
-hwtacacs-server shared-key cipher YourStrongSharedSecret123
-
-# IMPORTANT: source interface must be the one whose IP is allowed in server ACL / firewall
-hwtacacs-server source-ip <switch-mgmt-ip>
-
-quit
-
-# Create AAA scheme and bind to the HWTACACS template
+hwtacacs-server template tacacs-server
+ hwtacacs-server authentication 192.168.102.34
+ hwtacacs-server authorization 192.168.102.34
+ hwtacacs-server accounting 192.168.102.34
+ hwtacacs-server source-ip 192.168.20.81
+ hwtacacs-server shared-key cipher <SHARED_KEY>
+ undo hwtacacs-server user-name domain-included
+#
 aaa
- authentication-scheme AUTH_TAC
+ authentication-scheme TACACS-AUTH
   authentication-mode hwtacacs local
- authorization-scheme AUTHOR_TAC
+ authorization-scheme TACACS-AUTHOR
   authorization-mode hwtacacs local
- accounting-scheme ACC_TAC
+ accounting-scheme TACACS-ACC
   accounting-mode hwtacacs
-
- # Domain binding — this is the step that's easy to miss
- domain default_admin
-  authentication-scheme AUTH_TAC
-  authorization-scheme AUTHOR_TAC
-  accounting-scheme ACC_TAC
-  hwtacacs-server TACTPL
-
-quit
-
-# Apply to VTY (user-interface) lines
+ domain tacacs-domain
+  authentication-scheme TACACS-AUTH
+  authorization-scheme TACACS-AUTHOR
+  accounting-scheme TACACS-ACC
+  hwtacacs-server tacacs-server
+#
 user-interface vty 0 4
  authentication-mode aaa
- protocol inbound ssh
-
-# Keep a local fallback user BEFORE testing
-aaa
- local-user backupadmin password irreversible-cipher LocalBackupPass123
- local-user backupadmin privilege level 15
- local-user backupadmin service-type ssh
-quit
+ protocol inbound all
+#
+stelnet server enable
+ssh server port 2313
+ssh authentication-type default password
+ssh user ops01
+ssh user ops01 authentication-type password
+ssh user ops01 service-type stelnet
+ssh user ops01@tacacs-domain
+ssh user ops01@tacacs-domain authentication-type password
+ssh user ops01@tacacs-domain service-type stelnet
 ```
 
-**Verification commands (Huawei):**
+Login command from a workstation:
 
-```huawei
-display hwtacacs-server template TACTPL
-display aaa domain name default_admin
-display current-configuration | include hwtacacs
+```bash
+ssh -p 2313 \
+  -o KexAlgorithms=+diffie-hellman-group14-sha1 \
+  -o HostKeyAlgorithms=+ssh-rsa \
+  ops01@tacacs-domain@192.168.20.81
 ```
 
----
+## 6. Problems hit and what each one meant
 
-## 4. End-to-End Testing
+| # | Symptom | Cause | Fix |
+|---|---|---|---|
+| 1 | No log file found | Wrong paths used (`/var/log/tac_plus.acct`, `/etc/tacacs+/`). Real paths are `/var/log/tacacs+/` and `/etc/tacacs/`. | Use the paths in section 1. Daemon messages go to `journalctl -u tacacs`. |
+| 2 | Debug run exits instantly | Running `tac_plus` by hand while the service already holds port 49. Also `-d 128` was combined with `ls` flags by mistake. | `systemctl stop tacacs` before a manual debug run. |
+| 3 | tcpdump showed 0 packets | Switch was not sending TACACS traffic: login used the `default_admin` domain, which has no TACACS scheme. | Log in as `user@tacacs-domain` so the `tacacs-domain` AAA domain is used. |
+| 4 | Server log: `no user/group named ops01@tacacs-domain` | Switch sent the domain with the username. | `undo hwtacacs-server user-name domain-included` in the template. |
+| 5 | Server log: `Null reply packet, expecting CONTINUE` | Server sent the `Password:` prompt, switch never returned the password. | See cause 6. |
+| 6 | Server sends `Password:` then waits forever; switch log `SSH_FAIL ... User password authentication failed` | The switch SSH layer rejected the user before TACACS could check the password. There was no `ssh user ops01...` entry, and later the `ops01@tacacs-domain` entry had no `authentication-type` or `service-type`. | Add the full set of `ssh user` lines for both `ops01` and `ops01@tacacs-domain`, then `save`. |
+| 7 | Login with `sumon@tacacs-domain` failed | `sumon` is a local switch account, not in `tac_plus.conf`. | Use local accounts without the domain. |
+| 8 | Hash seemed wrong | `tac_pwd` was run a second time with the hash as input, which produced a new, unrelated hash. | Run `tac_pwd` once with the plain password. |
+| 9 | Login worked days earlier, then failed | Not fully diagnosed from the logs. The server side was healthy throughout (user found, `Password:` sent). The last changes visible are on the switch SSH user entries. | Check `display current-configuration \| include ssh user` and `display logbuffer \| include SSH_FAIL` first when this recurs. |
 
-1. Keep your existing console/local session open.
-2. Open a **new** SSH session to the switch.
-3. Log in using a TACACS+-defined username/password.
-4. On the server, confirm the hit in real time:
-   ```bash
-   sudo tail -f /var/log/tac_plus/access.log
-   ```
-5. Check `accounting.log` for the session start/stop and command records.
-6. Test privilege level restriction by attempting a `configure terminal` (Cisco) or system-view (Huawei) with a read-only user — it should be denied.
+Key diagnostic rule: if the server log shows `Read AUTHEN/CONT` a second time after `Password:`, the password reached the server and the result follows. If it does not, the switch (SSH or AAA layer) is the problem, not the password.
 
----
+## 7. Quick troubleshooting checklist
 
-## 5. Common Pitfalls & Troubleshooting Checklist
+Server:
+```bash
+systemctl status tacacs
+ss -tlnp | grep :49
+journalctl -u tacacs -f
+tcpdump -ni any port 49
+tac_plus -C /etc/tacacs/tac_plus.conf -P      # syntax check
+```
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| `tac_plus` won't start / port 49 in use | Old process still bound to port | `sudo ss -tulnp \| grep 49` → kill stale PID |
-| Switch can't reach server | Firewall/ACL blocking TCP/49 | Check `ufw status`, confirm source IP matches switch mgmt/source-interface |
-| Authentication fails, "key mismatch" in logs | Shared secret differs between server and switch | Re-check `key`/`shared-key cipher` on both ends — must match exactly, no trailing spaces |
-| Huawei: authentication silently falls back to local | AAA domain not linked to VTY / user not matching domain | Verify `domain default_admin` is applied and `authentication-mode aaa` is set on `user-interface vty` |
-| User authenticates but gets no commands | Authorization scheme not bound to domain, or `cmd` rules missing in tac_plus.conf group | Recheck `authorization-scheme` binding and group `cmd =` rules |
-| Locked out entirely | Fallback local account/session forgotten | Always keep console access + local backup user before enabling AAA |
-| tac_plus config won't parse | Syntax error (missing brace, wrong indentation) | Run `tac_plus -C <path> -P` to validate before restart |
+Switch:
+```
+display hwtacacs-server template tacacs-server
+display current-configuration configuration aaa
+display current-configuration | include ssh
+display logbuffer | include SSH_FAIL
+ping 192.168.102.34
+```
 
----
+Isolating the layer:
+- Telnet bypasses the `ssh user` entries, so a telnet login to `192.168.20.81` with `ops01@tacacs-domain` tests TACACS alone.
+- `tacacs_client -u ops01 -k '<key>' -H 192.168.102.34 authenticate` (from `pip install tacacs_plus`) tests the server without the switch.
 
-## 6. Security Hardening Recommendations
+## 8. Security cleanup still to do
 
-- Use a **long random shared key** (20+ chars), rotate periodically.
-- Restrict TCP/49 via firewall to only switch/router management IPs.
-- Use `des`/`irreversible-cipher` hashed passwords in configs, never cleartext in production.
-- Enable accounting on all devices for audit trail.
-- Consider running a **secondary TACACS+ server** for redundancy (`hwtacacs-server authentication <ip2>` / additional `tacacs server` block on Cisco) so a single server outage doesn't lock out admin access — fall back to `local` in the authentication scheme as a safety net either way.
+1. **Remove `-d 1023` from the service.** The debug log prints the shared key in clear text on every packet (`PACKET: key=...`). Edit `/etc/systemd/system/tacacs.service`, then `systemctl daemon-reload && systemctl restart tacacs`. Also run `undo debugging all` on the switch.
+2. **Rotate the shared key** on both server and switch. The old key was shown in logs and in this troubleshooting. Use letters and digits only to avoid `$` and `!` problems.
+3. **Change the `ops01` password** and regenerate the hash with `tac_pwd`. The plain password was typed in shell history and shared in chat.
+4. **Clear shell history** after secrets were typed: `history -c`. Remove the `login = des ...` and `perl/python crypt(...)` lines that contain the password from `~/.bash_history`.
+5. **Restrict port 49** to the switch management addresses. UFW is currently inactive.
+6. **Authorization fallback:** `authorization-cmd 3 hwtacacs` has no `local` fallback. Use `authorization-cmd 3 hwtacacs local` so a server outage cannot lock out command access.
+7. **Keep a local fallback account** on the switch (`sumon`, `faisal`, `level3` exist) and keep console access when changing AAA.
+8. **Stale file:** `/etc/systemd/system/tac_plus.service` was read in history and may be a leftover from an earlier attempt. Confirm it is unused (`systemctl cat tac_plus`) and remove it if so, to avoid two units fighting over port 49.
+9. **`ops01` privilege is `priv-lvl = 7` with `default service = deny`.** Add only the commands operators really need.
+10. **Back up** `/etc/tacacs/tac_plus.conf` and the switch config (`save`) once everything is stable.
 
----
+## 9. Gaps in this document
 
-## 7. Quick Reference — File/Command Summary
-
-| Task | Command |
-|---|---|
-| Install | `sudo apt install tacacs+ -y` |
-| Edit config | `sudo nano /etc/tacacs+/tac_plus.conf` |
-| Validate config | `sudo tac_plus -C /etc/tacacs+/tac_plus.conf -P` |
-| Restart service | `sudo systemctl restart tac_plus` |
-| Check status | `sudo systemctl status tac_plus` |
-| Live logs | `sudo tail -f /var/log/tac_plus/access.log` |
-| Check port | `sudo ss -tulnp \| grep 49` |
+- The final contents of `/etc/tacacs/tac_plus.conf` after the last edits (history 242-251) were not in the history, so section 3 reflects the earlier verified config.
+- The exact change that restored login after the failure on 25-26 Oct was not captured. The logs point at the switch SSH user entries, but this is an inference.
